@@ -1,6 +1,6 @@
 # Learning Log
 
-## M0 — Engineering Foundation
+## M0 — Engineering Foundation & Agentic Infrastructure
 
 Status: Completed
 
@@ -9,19 +9,24 @@ Status: Completed
 - [x] **Estructura moderna de proyectos Xcode**: Comprensión de `PBXFileSystemSynchronizedRootGroup` (novedad en Xcode 16+ para sincronizar archivos en disco automáticamente) y por qué archivos con nombres duplicados (como `.gitkeep`) provocan errores de recursos duplicados (`CpResource`).
 - [x] **Swift Testing vs XCTest**: Adopción del estándar moderno de pruebas en Swift 6 (`import Testing`, macros `@Test`, aserciones contextuales con `#expect`) en lugar del legado basado en clases de Objective-C (`XCTestCase`).
 - [x] **Configuración de Schemes Compartidos (`xcshareddata`)**: Creación de esquemas reproducibles en `SplitBill.xcscheme` para permitir que herramientas CLI (`xcodebuild`) y agentes ejecuten suites de pruebas sin depender de la UI de Xcode.
-- [x] **Guardrails de Arquitectura en CI/CLI**: Automatización con [`scripts/verify.sh`](../scripts/verify.sh) para verificar de forma estática que la capa de Dominio nunca importe SwiftUI ([ADR-002](../docs/decisions/ADR-002-domain-separation.md)) antes de compilar y correr pruebas.
-- [x] **Antigravity agents y skills**: Comprensión del sistema de especialización de agentes ([`.agents/agents/`](../.agents/agents)) y ejecución de flujos de verificación guiados.
+- [x] **Guardrails de Arquitectura en CI/CLI**: Automatización con [`scripts/verify.sh`](scripts/verify.sh) para verificar de forma estática que la capa de Dominio nunca importe SwiftUI ([ADR-002](docs/decisions/ADR-002-domain-separation.md)) antes de compilar y correr pruebas.
+- [x] **Context Engineering — Reglas vs. Skills vs. Subagentes**:
+  - **Reglas (`AGENTS.md`)**: Invariantes globales siempre presentes en el contexto.
+  - **Skills (`.agents/skills/`)**: Runbooks procedimentales cargados bajo demanda (*Progressive Disclosure*). Aprendimos por qué deben contener comandos, plantillas de código y checklists en lugar de resúmenes abstractos de un párrafo.
+  - **Subagentes (`.agents/agents/`)**: Especialistas con contexto aislado (`planner`, `ios-engineer`, `qa-engineer`, `code-reviewer`) conectados mediante contratos explícitos de entrada/salida (*Handoff Contracts*) y matrices de activación de skills.
+- [x] **Ecosistema `find-skills` (`npx skills`)**: Búsqueda, evaluación por reputación/instalaciones e instalación con `--copy` de skills de la comunidad (`swiftui-pro`, `swift-testing-pro`, `swift-concurrency-pro`, `mobile-ios-design`, `security-review`), más limpieza de carpetas redundantes de plugins para mantener un descubrimiento limpio en Antigravity.
 
 ### Agent contribution
 - Diagnóstico del repositorio embebido de Git y corrección de `.gitignore`.
 - Configuración del target de pruebas `SplitBillTests` en `project.pbxproj` vinculado con el framework moderno *Swift Testing*.
-- Creación del esquema compartido `SplitBill.xcscheme` habilitando el target de pruebas en el *TestAction*.
-- Creación y verificación del script reproducible [`scripts/verify.sh`](../scripts/verify.sh).
-- Ejecución exitosa de compilación y pruebas en el simulador de iPhone 17.
+- Creación del esquema compartido `SplitBill.xcscheme` y del script reproducible [`scripts/verify.sh`](scripts/verify.sh).
+- Evolución de los 4 subagentes en [`.agents/agents/`](.agents/agents) y las 7 skills del proyecto en [`.agents/skills/`](.agents/skills) con ejemplos Swift 6 y criterios claros de activación.
+- Instalación y curación de 5 skills especializadas de la comunidad (`swiftui-pro`, `swift-testing-pro`, `swift-concurrency-pro`, `mobile-ios-design`, `security-review`).
+- Creación de la guía y matriz de decisión en [`AGENTS.md`](AGENTS.md), [`docs/ai/agents-and-skills.md`](docs/ai/agents-and-skills.md) y [`docs/ai/agent-workflow.md`](docs/ai/agent-workflow.md).
 
 ### Human understanding
 - M0 establece las bases para trabajar de manera iterativa y profesional: cada cambio que haga el desarrollador o el agente puede validarse en segundos con `./scripts/verify.sh`.
-- La separación entre `Domain` y `UI` se respeta desde la infraestructura de compilación antes de escribir las reglas de división de cuentas en M1.
+- Existe un mapa claro de qué subagente y qué skill usar en cada etapa del desarrollo (Planificación → Implementación → QA → Code Review).
 
 ### Open questions
-- En M1 definiremos la representación exacta del tipo `Money` (modelado con enteros en centavos + ISO Currency) y la estrategia de redondeo para división equitativa de centavos.
+- En M1 definiremos e implementaremos el tipo `Money` (modelado con enteros en centavos `Int64` + `Currency`) y el motor de división determinista (`SplitEngine`).
