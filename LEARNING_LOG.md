@@ -35,7 +35,7 @@ Status: Completed
 
 ## M1 — Split Engine
 
-Status: In progress (Task 2/4 completed)
+Status: In progress (Task 3/4 completed)
 
 ### Task 1: `DomainError`, `Currency` y `Money`
 - **Concepts learned**:
@@ -57,4 +57,13 @@ Status: In progress (Task 2/4 completed)
   - [`apps/SplitBill/SplitBill/Domain/SplitMode.swift`](apps/SplitBill/SplitBill/Domain/SplitMode.swift)
   - [`apps/SplitBill/SplitBill/Domain/ReceiptItem.swift`](apps/SplitBill/SplitBill/Domain/ReceiptItem.swift)
   - [`apps/SplitBill/SplitBillTests/DomainEntityTests.swift`](apps/SplitBill/SplitBillTests/DomainEntityTests.swift)
+
+### Task 3: Algoritmo Largest Remainder y División por Artículo (`SplitEngine` Parte 1)
+- **Concepts learned**:
+  - [x] **Método de Hamilton (*Largest Remainder Method*)**: Separa el cociente entero base $q_i = \lfloor (A \times w_i) / W \rfloor$ del numerador de residuo exacto $r_i = (A \times w_i) \bmod W$, repartiendo los centavos sobrantes $R = A - \sum q_i$ primero a quienes tienen mayor residuo $r_i$ y desempatando por orden de participante (`orderIndex`).
+  - [x] **Aritmética de 128 bits (`multipliedFullWidth` / `dividingFullWidth`)**: Evita desbordamientos de `Int64` al multiplicar montos grandes por pesos grandes antes de dividir entre el peso total.
+  - [x] **Unificación de los 4 modos de `SplitMode` en pesos enteros**: `.wholeItem` (peso `1`), `.equal` (peso `1` para cada asignado), `.percentage` (peso = porcentaje) y `.portion` (peso = porciones) se reducen al mismo algoritmo matemático verificado.
+- **Files implemented**:
+  - [`apps/SplitBill/SplitBill/Domain/SplitEngine.swift`](apps/SplitBill/SplitBill/Domain/SplitEngine.swift)
+  - [`apps/SplitBill/SplitBillTests/ItemSplitTests.swift`](apps/SplitBill/SplitBillTests/ItemSplitTests.swift)
 
