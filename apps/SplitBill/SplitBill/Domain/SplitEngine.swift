@@ -1,5 +1,23 @@
 import Foundation
 
+/// The final monetary breakdown for an individual participant in a receipt.
+nonisolated struct ParticipantSplitSummary: Identifiable, Equatable, Sendable {
+    var id: Participant.ID { participantID }
+    let participantID: Participant.ID
+    let itemsSubtotal: Money
+    let taxAllocated: Money
+    let tipAllocated: Money
+    let total: Money
+}
+
+/// The complete split calculation result for a receipt.
+nonisolated struct ReceiptSplitResult: Equatable, Sendable {
+    let receiptID: UUID
+    let summariesByParticipant: [Participant.ID: ParticipantSplitSummary]
+    let itemAllocations: [ReceiptItem.ID: [Participant.ID: Money]]
+    let totalAllocated: Money
+}
+
 /// Pure, deterministic calculation engine for allocating monetary amounts and receipt items.
 nonisolated enum SplitEngine {
 
@@ -150,6 +168,106 @@ nonisolated enum SplitEngine {
         return try allocate(
             amount: item.lineTotal,
             orderedParticipants: orderedParticipants,
+            weights: weights
+        )
+    }
+
+    /// Calculates the complete split for a receipt, allocating all items, proportional tax,
+    /// and proportional tip, and verifying the master allocation invariant.
+    static func calculateSplit(for receipt: Receipt) throws(DomainError) -> ReceiptSplitResult {
+        let orderedIDs = receipt.participants.map(\.id)
+        guard !orderedIDs.isEmpty else {
+            throw .noParticipantsInReceipt
+        }
+
+        var itemAllocations: [ReceiptItem.ID: [Participant.ID: Money]] = [:]
+        itemAllocations.reserveCapacity(receipt.items.count)
+
+        var itemsSubtotalByParticipant: [Participant.ID: Int64] = [:]
+        for id in orderedIDs {
+            itemsSubtotalByParticipant[id] = 0
+        }
+
+        for item in receipt.items {
+            let allocations = try allocateItem(item, orderedParticipants: orderedIDs)
+            itemAllocations[item.id] = allocations
+            for (participantID, money) in allocations {
+                itemsSubtotalByParticipant[participantID, default: 0] += money.amountInMinorUnits
+            }
+        }
+
+        // Allocate tax and tip proportionally to each participant's items subtotal.
+        let taxAllocations = try allocateAdjustment(
+            amount: receipt.tax,
+            orderedIDs: orderedIDs,
+            subtotals: itemsSubtotalByParticipant
+        )
+
+        let tipAllocations = try allocateAdjustment(
+            amount: receipt.tip,
+            orderedIDs: orderedIDs,
+            subtotals: itemsSubtotalByParticipant
+        )
+
+        var summaries: [Participant.ID: ParticipantSplitSummary] = [:]
+        summaries.reserveCapacity(orderedIDs.count)
+
+        var totalAllocatedCents: Int64 = 0
+
+        for id in orderedIDs {
+            let itemsCents = itemsSubtotalByParticipant[id] ?? 0
+            let taxCents = taxAllocations[id]?.amountInMinorUnits ?? 0
+            let tipCents = tipAllocations[id]?.amountInMinorUnits ?? 0
+            let personTotalCents = itemsCents + taxCents + tipCents
+
+            totalAllocatedCents += personTotalCents
+
+            summaries[id] = ParticipantSplitSummary(
+                participantID: id,
+                itemsSubtotal: Money(amountInMinorUnits: itemsCents, currency: receipt.currency),
+                taxAllocated: Money(amountInMinorUnits: taxCents, currency: receipt.currency),
+                tipAllocated: Money(amountInMinorUnits: tipCents, currency: receipt.currency),
+                total: Money(amountInMinorUnits: personTotalCents, currency: receipt.currency)
+            )
+        }
+
+        let totalAllocatedMoney = Money(amountInMinorUnits: totalAllocatedCents, currency: receipt.currency)
+        assert(
+            totalAllocatedMoney == receipt.total,
+            "Master Allocation Invariant violated: allocated \(totalAllocatedMoney) != receipt total \(receipt.total)"
+        )
+
+        return ReceiptSplitResult(
+            receiptID: receipt.id,
+            summariesByParticipant: summaries,
+            itemAllocations: itemAllocations,
+            totalAllocated: totalAllocatedMoney
+        )
+    }
+
+    /// Allocates an adjustment (tax or tip) proportionally to participants who consumed items,
+    /// or equally across all participants if the items subtotal is zero.
+    private static func allocateAdjustment(
+        amount: Money,
+        orderedIDs: [Participant.ID],
+        subtotals: [Participant.ID: Int64]
+    ) throws(DomainError) -> [Participant.ID: Money] {
+        guard amount.amountInMinorUnits > 0 else {
+            return [:]
+        }
+
+        let consumingParticipants = subtotals.filter { $0.value > 0 }
+        let weights: [Participant.ID: Int64]
+        if !consumingParticipants.isEmpty {
+            weights = consumingParticipants
+        } else {
+            // If items subtotal is zero, distribute equally among all participants in canonical order.
+            weights = Dictionary(orderedIDs.map { ($0, Int64(1)) }, uniquingKeysWith: { first, _ in first })
+        }
+
+        return try allocate(
+            amount: amount,
+            orderedParticipants: orderedIDs,
             weights: weights
         )
     }

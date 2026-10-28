@@ -35,7 +35,7 @@ Status: Completed
 
 ## M1 — Split Engine
 
-Status: In progress (Task 3/4 completed)
+Status: Completed (4/4 tasks completed)
 
 ### Task 1: `DomainError`, `Currency` y `Money`
 - **Concepts learned**:
@@ -66,4 +66,14 @@ Status: In progress (Task 3/4 completed)
 - **Files implemented**:
   - [`apps/SplitBill/SplitBill/Domain/SplitEngine.swift`](apps/SplitBill/SplitBill/Domain/SplitEngine.swift)
   - [`apps/SplitBill/SplitBillTests/ItemSplitTests.swift`](apps/SplitBill/SplitBillTests/ItemSplitTests.swift)
+
+### Task 4: `Receipt`, Impuestos/Propina Proporcionales y Reconciliación Final (`SplitEngine` Parte 2)
+- **Concepts learned**:
+  - [x] **Reparto Proporcional de Impuesto y Propina**: Distribuir `tax` y `tip` usando el subtotal consumido por cada persona como ponderación garantiza justicia distributiva (quien no consumió alimentos no paga IVA ni propina).
+  - [x] **Invariante Maestro del Recibo**: Verificación estricta de que $\sum \text{persona.total} == \text{receipt.total}$ para cualquier combinación de artículos, porcentajes, porciones, impuestos y propinas.
+- **Files implemented**:
+  - [`apps/SplitBill/SplitBill/Domain/Receipt.swift`](apps/SplitBill/SplitBill/Domain/Receipt.swift)
+  - [`apps/SplitBill/SplitBill/Domain/SplitEngine.swift`](apps/SplitBill/SplitBill/Domain/SplitEngine.swift) (completado con `calculateSplit`)
+  - [`apps/SplitBill/SplitBillTests/ReceiptSplitEngineTests.swift`](apps/SplitBill/SplitBillTests/ReceiptSplitEngineTests.swift)
+  - [`docs/domain/money-and-splitting.md`](docs/domain/money-and-splitting.md) (especificación actualizada)
 
