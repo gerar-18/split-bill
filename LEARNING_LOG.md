@@ -77,3 +77,21 @@ Status: Completed (4/4 tasks completed)
   - [`apps/SplitBill/SplitBillTests/ReceiptSplitEngineTests.swift`](apps/SplitBill/SplitBillTests/ReceiptSplitEngineTests.swift)
   - [`docs/domain/money-and-splitting.md`](docs/domain/money-and-splitting.md) (especificación actualizada)
 
+## Milestone M2: iOS UI (Complete Manual Split Flow)
+
+### Task 1: Parser Monetario Determinista y `@Observable` ViewModel + Pruebas Unitarias
+- **Concepts learned**:
+  - [x] **Parseo Monetario Entero sin `Double`**: `MoneyFormatter.parseMinorUnits` procesa cadenas decimales de usuario (ej. `"125.50"`, `"$45.5"`, `"1,234.50"`) y las escala a centavos enteros (`Int64`) directamente mediante potencias de 10 y validación estricta de dígitos ASCII. Elimina cualquier riesgo de errores de precisión binaria IEEE 754.
+  - [x] **Aritmética Entera *Half-Up* para Propinas**: `TipSelection.resolveMoney` calcula propinas de porcentaje mediante `(subtotal * pct + 50) / 100`, logrando redondeo exacto al entero más cercano con pura matemática entera.
+  - [x] **Observation Framework (`@Observable`) y Aislamiento `@MainActor`**: `ReceiptEditorViewModel` se anota con `@Observable` y `@MainActor`, orquestando los borradores de UI y recalculando en vivo el recibo y el desglose delegando a las entidades puras de `Domain/` (`ADR-002`).
+  - [x] **Borrado Seguro y Cascadas en la UI**: Al remover participantes, el ViewModel limpia de manera defensiva las asignaciones en los ítems existentes (reasignando `.wholeItem` al primer participante disponible o convirtiendo `.percentage` a 100% / `.equal`), evitando que el estado quede corrupto.
+- **Files implemented**:
+  - [`apps/SplitBill/SplitBill/UI/Formatting/MoneyFormatter.swift`](apps/SplitBill/SplitBill/UI/Formatting/MoneyFormatter.swift)
+  - [`apps/SplitBill/SplitBill/UI/State/TipSelection.swift`](apps/SplitBill/SplitBill/UI/State/TipSelection.swift)
+  - [`apps/SplitBill/SplitBill/UI/State/SplitModeKind.swift`](apps/SplitBill/SplitBill/UI/State/SplitModeKind.swift)
+  - [`apps/SplitBill/SplitBill/UI/State/ReceiptItemDraft.swift`](apps/SplitBill/SplitBill/UI/State/ReceiptItemDraft.swift)
+  - [`apps/SplitBill/SplitBill/UI/State/ReceiptEditorViewModel.swift`](apps/SplitBill/SplitBill/UI/State/ReceiptEditorViewModel.swift)
+  - [`apps/SplitBill/SplitBillTests/MoneyFormatterTests.swift`](apps/SplitBill/SplitBillTests/MoneyFormatterTests.swift)
+  - [`apps/SplitBill/SplitBillTests/ReceiptEditorViewModelTests.swift`](apps/SplitBill/SplitBillTests/ReceiptEditorViewModelTests.swift)
+
+
