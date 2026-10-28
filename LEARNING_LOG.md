@@ -104,5 +104,17 @@ Status: Completed (4/4 tasks completed)
   - [`apps/SplitBill/SplitBill/UI/Views/ParticipantsSectionView.swift`](apps/SplitBill/SplitBill/UI/Views/ParticipantsSectionView.swift)
   - [`apps/SplitBill/SplitBill/UI/Views/TaxAndTipSectionView.swift`](apps/SplitBill/SplitBill/UI/Views/TaxAndTipSectionView.swift)
 
+### Task 3: Lista de Artículos, Acciones Rápidas y Editor Modal de Asignaciones (`ReceiptItemEditorSheet`)
+- **Concepts learned**:
+  - [x] **Gestión Segura de Hojas Modales (`.sheet(item:)` vs `.sheet(isPresented:)`)**: Usar `.sheet(item: $viewModel.activeItemDraft)` mantiene retenida la instancia del borrador durante la animación de descarte nativa de iOS, evitando el parpadeo de contenido vacío que ocurre al poner un `activeItemDraft = nil` sincrónicamente con `isPresented`.
+  - [x] **Aritmética Entera Pura en la UI para Distribución Proporcional**: Calcular la proporción en vivo en modo `.portion` mediante `(shares * 100 + total / 2) / total` para mostrar porcentajes de referencia en la UI sin jamás invocar `Double` ni violar la regla de precisión monetaria.
+  - [x] **Ajuste de Granularidad en Steppers de Porcentajes (`step: 1`)**: Los divisores impares (ej. 3 personas: 34%, 33%, 33%) requieren un incremento unitario (`step: 1`); un `step: 5` bloquearía al usuario impidiéndole alcanzar la suma obligatoria de 100%.
+  - [x] **Flujo Accesible y Destructivo con Confirmación**: Implementar `.confirmationDialog` antes de eliminar artículos para evitar pérdidas accidentales de datos, acompañado de `ContentUnavailableView` con icono descriptivo cuando la lista está vacía.
+- **Files implemented**:
+  - [`apps/SplitBill/SplitBill/UI/Views/ReceiptItemRowView.swift`](apps/SplitBill/SplitBill/UI/Views/ReceiptItemRowView.swift)
+  - [`apps/SplitBill/SplitBill/UI/Views/ReceiptItemsSectionView.swift`](apps/SplitBill/SplitBill/UI/Views/ReceiptItemsSectionView.swift)
+  - [`apps/SplitBill/SplitBill/UI/Views/ReceiptItemEditorSheet.swift`](apps/SplitBill/SplitBill/UI/Views/ReceiptItemEditorSheet.swift)
+
+
 
 
