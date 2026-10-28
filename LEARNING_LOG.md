@@ -79,6 +79,8 @@ Status: Completed (4/4 tasks completed)
 
 ## Milestone M2: iOS UI (Complete Manual Split Flow)
 
+Status: Completed (4/4 tasks completed)
+
 ### Task 1: Parser Monetario Determinista y `@Observable` ViewModel + Pruebas Unitarias
 - **Concepts learned**:
   - [x] **Parseo Monetario Entero sin `Double`**: `MoneyFormatter.parseMinorUnits` procesa cadenas decimales de usuario (ej. `"125.50"`, `"$45.5"`, `"1,234.50"`) y las escala a centavos enteros (`Int64`) directamente mediante potencias de 10 y validación estricta de dígitos ASCII. Elimina cualquier riesgo de errores de precisión binaria IEEE 754.
@@ -114,6 +116,19 @@ Status: Completed (4/4 tasks completed)
   - [`apps/SplitBill/SplitBill/UI/Views/ReceiptItemRowView.swift`](apps/SplitBill/SplitBill/UI/Views/ReceiptItemRowView.swift)
   - [`apps/SplitBill/SplitBill/UI/Views/ReceiptItemsSectionView.swift`](apps/SplitBill/SplitBill/UI/Views/ReceiptItemsSectionView.swift)
   - [`apps/SplitBill/SplitBill/UI/Views/ReceiptItemEditorSheet.swift`](apps/SplitBill/SplitBill/UI/Views/ReceiptItemEditorSheet.swift)
+
+### Task 4: Tarjetas de Resumen por Persona, `ShareLink` y Espacio de Trabajo Unificado (`ReceiptWorkspaceView`)
+- **Concepts learned**:
+  - [x] **Síntesis Accesible vs. Combinación de Hijos (`accessibilityElement`)**: Cuando se sintetiza una narración gramatical completa (`accessibilityVoiceOverLabel`), el contenedor debe configurarse con `.accessibilityElement(children: .ignore)` para evitar que VoiceOver lea por duplicado tanto la oración personalizada como los elementos hijos.
+  - [x] **Jerarquía y Contraste en Contenedores Anidados**: Al anidar tarjetas (`ReceiptWorkspaceView` → `sectionCard` → `ParticipantSummaryCardView`), transicionar de `.background.secondary` a `.background.tertiary` complementado con un borde fino (`strokeBorder(Color.secondary.opacity(0.2))`) preserva la profundidad visual y elevación en modo Claro y Oscuro.
+  - [x] **Condición Quirúrgica para Guías de Estado Vacío**: Validar `splitResult != nil && !viewModel.items.isEmpty` garantiza que la UI muestre `emptyGuidanceView` mientras el usuario solo tenga participantes pero aún no haya registrado artículos, evitando badges de reconciliación en $0.00 prematuros.
+  - [x] **Exportación Compartida Nativa (`ShareLink`) y Prevención de Pérdida de Datos**: Integrar `ShareLink` directamente con la cadena formateada `shareableSummaryText` sin puentes de UIKit (`UIActivityViewController`), y proteger el reseteo del recibo con diálogo de confirmación destructivo (`.confirmationDialog("¿Reiniciar cuenta?")`).
+- **Files implemented**:
+  - [`apps/SplitBill/SplitBill/UI/Views/ParticipantSummaryCardView.swift`](apps/SplitBill/SplitBill/UI/Views/ParticipantSummaryCardView.swift)
+  - [`apps/SplitBill/SplitBill/UI/Views/SplitSummarySectionView.swift`](apps/SplitBill/SplitBill/UI/Views/SplitSummarySectionView.swift)
+  - [`apps/SplitBill/SplitBill/UI/Views/ReceiptWorkspaceView.swift`](apps/SplitBill/SplitBill/UI/Views/ReceiptWorkspaceView.swift)
+  - [`apps/SplitBill/SplitBill/ContentView.swift`](apps/SplitBill/SplitBill/ContentView.swift)
+
 
 
 

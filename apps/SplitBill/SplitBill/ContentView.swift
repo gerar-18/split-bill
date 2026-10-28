@@ -1,17 +1,13 @@
 import SwiftUI
-import Playgrounds
 
 struct ContentView: View {
+    @State private var viewModel = ReceiptEditorViewModel()
+
     var body: some View {
-        Text("Hello, world!")
-            .padding()
+        ReceiptWorkspaceView(viewModel: viewModel)
     }
 }
 
 #Preview {
     ContentView()
-}
-
-#Playground {
-    _ = 1 + 2
 }
