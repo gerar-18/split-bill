@@ -94,4 +94,15 @@ Status: Completed (4/4 tasks completed)
   - [`apps/SplitBill/SplitBillTests/MoneyFormatterTests.swift`](apps/SplitBill/SplitBillTests/MoneyFormatterTests.swift)
   - [`apps/SplitBill/SplitBillTests/ReceiptEditorViewModelTests.swift`](apps/SplitBill/SplitBillTests/ReceiptEditorViewModelTests.swift)
 
+### Task 2: Secciones de Participantes, Selector de Moneda y Controles de Impuestos/Propina
+- **Concepts learned**:
+  - [x] **Proyección con `@Bindable` en Vistas Hijas**: Recibir `@Bindable var viewModel: ReceiptEditorViewModel` permite derivar bindings bidireccionales (`$viewModel.taxText`, `$viewModel.currency`, etc.) directamente hacia controles nativos (`TextField`, `Picker`) de forma idiomática y con invalidaciones quirúrgicas de la vista.
+  - [x] **Diseño Adaptativo con `ViewThatFits`**: Disponer los botones de propina (`0%`, `10%`, `15%`, `20%`, `Personalizada`) en una sola fila cuando hay espacio y conmutar a dos filas en pantallas compactas o tamaños grandes de Dynamic Type sin necesidad de `GeometryReader`.
+  - [x] **Accesibilidad Apple HIG y VoiceOver**: Ocultar glifos decorativos (`Text("$").accessibilityHidden(true)`), unificar lecturas de pares etiqueta-valor con `.accessibilityElement(children: .combine)`, y garantizar áreas táctiles de 44x44 pt con `.contentShape(Rectangle())`.
+  - [x] **Estilos Semánticos Puros de SwiftUI**: Utilizar `.background.secondary` y `.quaternary` en lugar de constructores de puente de UIKit (`UIColor`), asegurando compatibilidad multiplataforma y soporte automático para modo Claro y Oscuro.
+- **Files implemented**:
+  - [`apps/SplitBill/SplitBill/UI/Views/ParticipantsSectionView.swift`](apps/SplitBill/SplitBill/UI/Views/ParticipantsSectionView.swift)
+  - [`apps/SplitBill/SplitBill/UI/Views/TaxAndTipSectionView.swift`](apps/SplitBill/SplitBill/UI/Views/TaxAndTipSectionView.swift)
+
+
 
