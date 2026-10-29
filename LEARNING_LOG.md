@@ -129,6 +129,24 @@ Status: Completed (4/4 tasks completed)
   - [`apps/SplitBill/SplitBill/UI/Views/ReceiptWorkspaceView.swift`](apps/SplitBill/SplitBill/UI/Views/ReceiptWorkspaceView.swift)
   - [`apps/SplitBill/SplitBill/ContentView.swift`](apps/SplitBill/SplitBill/ContentView.swift)
 
+## Milestone M3: Persistence (Receipts survive app restarts)
+
+Status: In Progress (1/3 tasks completed)
+
+### Task 1: Capa de Infraestructura SwiftData, Mappers y `ReceiptStore` + Tests
+- **Concepts learned**:
+  - [x] **Desacoplamiento Estricto de Persistencia (`ADR-002`)**: El motor de dominio (`Receipt`, `Participant`, `SplitMode`, `Money`) no importa `SwiftData` ni `SwiftUI`. Las entidades `@Model` (`StoredReceipt`) residen exclusivamente en `Infrastructure/Persistence/`, preservando la inmutabilidad de los tipos de valor y aislando las reglas de negocio de la base de datos.
+  - [x] **Preservación del Orden Canónico mediante DTOs en SwiftData**: Las relaciones relacionales nativas de SQLite (`@Relationship`) son conjuntos no ordenados que desordenan los arreglos al recargar. Serializar el grafo de participantes y artículos en un payload tipado (`ReceiptPayloadDTO`) dentro de `StoredReceipt` preserva el 100% del orden canónico de comensales, garantizando desempates de centavos deterministas con el Método de Hamilton en `SplitEngine`.
+  - [x] **Captura Segura de Parámetros en `#Predicate`**: En macros `#Predicate` de SwiftData, capturar directamente rutas de propiedades externas (como `snapshot.id`) puede causar errores de compilación (`StandardPredicateExpression`). Extraer el identificador a una constante local (`let targetID = snapshot.id`) antes del predicado resuelve la captura de forma robusta.
+  - [x] **Pruebas de Integración Aisladas en Memoria (`isStoredInMemoryOnly: true`)**: Configurar `ModelConfiguration(isStoredInMemoryOnly: true)` crea contenedores SQLite efímeros en RAM para cada `@Test` de Swift Testing, permitiendo validar round-trips completos, ordenamientos y operaciones CRUD en milisegundos sin contaminar el almacenamiento del dispositivo.
+- **Files implemented**:
+  - [`apps/SplitBill/SplitBill/Infrastructure/Persistence/ReceiptSnapshot.swift`](apps/SplitBill/SplitBill/Infrastructure/Persistence/ReceiptSnapshot.swift)
+  - [`apps/SplitBill/SplitBill/Infrastructure/Persistence/StoredReceipt.swift`](apps/SplitBill/SplitBill/Infrastructure/Persistence/StoredReceipt.swift)
+  - [`apps/SplitBill/SplitBill/Infrastructure/Persistence/ReceiptStore.swift`](apps/SplitBill/SplitBill/Infrastructure/Persistence/ReceiptStore.swift)
+  - [`apps/SplitBill/SplitBillTests/ReceiptPersistenceTests.swift`](apps/SplitBill/SplitBillTests/ReceiptPersistenceTests.swift)
+  - [`scripts/verify.sh`](scripts/verify.sh)
+
+
 
 
 
