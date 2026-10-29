@@ -6,26 +6,52 @@ import SwiftUI
 ///
 /// Follows ADR-002 by maintaining strict separation: delegates all business rules and financial
 /// calculations to the pure `Domain` layer (`Receipt`, `SplitEngine`, `Money`).
+///
+/// Supports automatic persistence and multi-receipt sessions through `ReceiptPersistenceStore`.
 @Observable
 @MainActor
 final class ReceiptEditorViewModel {
 
+    // MARK: - Identifiers & Persistence State
+
+    private(set) var receiptID: UUID = UUID()
+    var receiptTitle: String = "" {
+        didSet { persistCurrentSession() }
+    }
+    private(set) var savedReceipts: [ReceiptSnapshot] = []
+
+    private var receiptCreatedAt: Date = Date()
+    private var isRestoringSession: Bool = false
+    private let store: (any ReceiptPersistenceStore)?
+
     // MARK: - State Properties
 
-    var currency: Currency = .mxn
+    var currency: Currency = .mxn {
+        didSet { persistCurrentSession() }
+    }
     var participants: [Participant] = []
     var newParticipantName: String = ""
     var items: [ReceiptItem] = []
-    var taxText: String = ""
-    var tipSelection: TipSelection = .percentage(10)
-    var customTipText: String = ""
+    var taxText: String = "" {
+        didSet { persistCurrentSession() }
+    }
+    var tipSelection: TipSelection = .percentage(10) {
+        didSet { persistCurrentSession() }
+    }
+    var customTipText: String = "" {
+        didSet { persistCurrentSession() }
+    }
     var activeItemDraft: ReceiptItemDraft? = nil
     var validationMessage: String? = nil
 
     // MARK: - Initializer
 
-    init(currency: Currency = .mxn) {
+    init(currency: Currency = .mxn, store: (any ReceiptPersistenceStore)? = nil) {
         self.currency = currency
+        self.store = store
+        self.receiptID = UUID()
+        self.receiptCreatedAt = Date()
+        loadInitialSession()
     }
 
     // MARK: - Computed Financial Properties
@@ -58,6 +84,7 @@ final class ReceiptEditorViewModel {
         guard !participants.isEmpty else { return nil }
         do {
             return try Receipt(
+                id: receiptID,
                 currency: currency,
                 participants: participants,
                 items: items,
@@ -87,7 +114,12 @@ final class ReceiptEditorViewModel {
         }
 
         var lines: [String] = []
-        lines.append("🧾 SplitBill — Resumen de Cuenta")
+        let trimmedTitle = receiptTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmedTitle.isEmpty {
+            lines.append("🧾 SplitBill — \(trimmedTitle)")
+        } else {
+            lines.append("🧾 SplitBill — Resumen de Cuenta")
+        }
         lines.append("--------------------------------")
 
         if !receipt.items.isEmpty {
@@ -156,6 +188,7 @@ final class ReceiptEditorViewModel {
             participants.append(participant)
             newParticipantName = ""
             validationMessage = nil
+            persistCurrentSession()
         } catch {
             validationMessage = errorDescription(for: error)
         }
@@ -166,12 +199,14 @@ final class ReceiptEditorViewModel {
         let removedIDs = Set(offsets.map { participants[$0].id })
         participants.remove(atOffsets: offsets)
         cleanupParticipantsInItems(removedIDs: removedIDs)
+        persistCurrentSession()
     }
 
     /// Removes a participant by ID and cleans up references in items.
     func removeParticipant(id: Participant.ID) {
         participants.removeAll { $0.id == id }
         cleanupParticipantsInItems(removedIDs: [id])
+        persistCurrentSession()
     }
 
     // MARK: - Item Actions
@@ -206,6 +241,7 @@ final class ReceiptEditorViewModel {
             }
             activeItemDraft = nil
             validationMessage = nil
+            persistCurrentSession()
         } catch {
             validationMessage = errorDescription(for: error)
         }
@@ -214,15 +250,105 @@ final class ReceiptEditorViewModel {
     /// Deletes items at the specified offsets.
     func deleteItem(at offsets: IndexSet) {
         items.remove(atOffsets: offsets)
+        persistCurrentSession()
     }
 
     /// Deletes an item by ID.
     func deleteItem(id: ReceiptItem.ID) {
         items.removeAll { $0.id == id }
+        persistCurrentSession()
     }
 
     /// Resets all editor state to pristine initial values.
     func reset() {
+        startNewReceipt()
+    }
+
+    // MARK: - Session & Persistence Actions
+
+    /// Refreshes `savedReceipts` from the persistence store.
+    func refreshSavedReceipts() {
+        guard let store else {
+            savedReceipts = []
+            return
+        }
+        do {
+            savedReceipts = try store.fetchAll()
+        } catch {
+            savedReceipts = []
+        }
+    }
+
+    /// Loads the latest saved receipt session if available.
+    func loadInitialSession() {
+        refreshSavedReceipts()
+        if let latest = savedReceipts.first {
+            loadSnapshot(latest)
+        }
+    }
+
+    /// Restores view model state from a `ReceiptSnapshot` without triggering redundant auto-saves.
+    func loadSnapshot(_ snapshot: ReceiptSnapshot) {
+        isRestoringSession = true
+        defer { isRestoringSession = false }
+
+        receiptID = snapshot.id
+        receiptCreatedAt = snapshot.createdAt
+        receiptTitle = snapshot.title
+        currency = snapshot.currency
+        participants = snapshot.participants
+        items = snapshot.items
+        taxText = snapshot.tax.amountInMinorUnits > 0 ? MoneyFormatter.decimalString(from: snapshot.tax) : ""
+        tipSelection = snapshot.tipSelection
+        if let customUnits = snapshot.customTipMinorUnits, customUnits > 0 {
+            customTipText = MoneyFormatter.decimalString(from: Money(amountInMinorUnits: customUnits, currency: snapshot.currency))
+        } else {
+            customTipText = ""
+        }
+        activeItemDraft = nil
+        validationMessage = nil
+    }
+
+    /// Persists the active session state as a `ReceiptSnapshot` if content exists.
+    func persistCurrentSession() {
+        guard !isRestoringSession, let store else { return }
+        let trimmedTitle = receiptTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        let hasContent = !trimmedTitle.isEmpty || !participants.isEmpty || !items.isEmpty
+        guard hasContent else { return }
+
+        let customTipUnits: Int64 = tipSelection == .custom
+            ? (MoneyFormatter.parseMinorUnits(from: customTipText, currency: currency) ?? 0)
+            : 0
+
+        let snapshot = ReceiptSnapshot(
+            id: receiptID,
+            title: receiptTitle,
+            createdAt: receiptCreatedAt,
+            updatedAt: Date(),
+            currency: currency,
+            participants: participants,
+            items: items,
+            tax: resolvedTax,
+            tipSelection: tipSelection,
+            customTipMinorUnits: customTipUnits
+        )
+
+        do {
+            try store.save(snapshot)
+            refreshSavedReceipts()
+        } catch {
+            // Persistence errors fail gracefully to avoid disrupting UI flow
+        }
+    }
+
+    /// Clears the active session and prepares a new receipt.
+    func startNewReceipt() {
+        isRestoringSession = true
+        defer { isRestoringSession = false }
+
+        receiptID = UUID()
+        receiptCreatedAt = Date()
+        receiptTitle = ""
         participants.removeAll()
         items.removeAll()
         newParticipantName = ""
@@ -231,6 +357,34 @@ final class ReceiptEditorViewModel {
         customTipText = ""
         activeItemDraft = nil
         validationMessage = nil
+    }
+
+    /// Selects and restores a saved receipt by its identifier.
+    func selectReceipt(id: UUID) {
+        if let snapshot = savedReceipts.first(where: { $0.id == id }) {
+            loadSnapshot(snapshot)
+        } else if let snapshot = try? store?.fetch(id: id) {
+            loadSnapshot(snapshot)
+            refreshSavedReceipts()
+        }
+    }
+
+    /// Deletes a saved receipt by ID, updating `savedReceipts` and falling back cleanly if active.
+    func deleteSavedReceipt(id: UUID) {
+        do {
+            try store?.delete(id: id)
+        } catch {
+            // Fail gracefully
+        }
+        refreshSavedReceipts()
+
+        if id == receiptID {
+            if let next = savedReceipts.first {
+                loadSnapshot(next)
+            } else {
+                startNewReceipt()
+            }
+        }
     }
 
     // MARK: - Private Helpers

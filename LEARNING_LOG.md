@@ -131,7 +131,7 @@ Status: Completed (4/4 tasks completed)
 
 ## Milestone M3: Persistence (Receipts survive app restarts)
 
-Status: In Progress (1/3 tasks completed)
+Status: In Progress (2/3 tasks completed)
 
 ### Task 1: Capa de Infraestructura SwiftData, Mappers y `ReceiptStore` + Tests
 - **Concepts learned**:
@@ -145,6 +145,16 @@ Status: In Progress (1/3 tasks completed)
   - [`apps/SplitBill/SplitBill/Infrastructure/Persistence/ReceiptStore.swift`](apps/SplitBill/SplitBill/Infrastructure/Persistence/ReceiptStore.swift)
   - [`apps/SplitBill/SplitBillTests/ReceiptPersistenceTests.swift`](apps/SplitBill/SplitBillTests/ReceiptPersistenceTests.swift)
   - [`scripts/verify.sh`](scripts/verify.sh)
+
+### Task 2: Auto-Guardado, Restauración y Gestión de Cuentas en `ReceiptEditorViewModel`
+- **Concepts learned**:
+  - [x] **Patrón Reentrancy-Guard con `defer` en ViewModels `@Observable`**: Disparar persistencia automática desde observadores `didSet` en propiedades reactivas (`receiptTitle`, `taxText`, `tipSelection`, etc.) provocaría escrituras redundantes en cascada durante la carga de datos. El uso de una bandera transitoria `isRestoringSession = true` acompañada de `defer { isRestoringSession = false }` garantiza que la hidratación desde SQLite sea atómica y segura.
+  - [x] **Compuerta Defensiva de Contenido (`hasContent`)**: Comprobar que existe al menos un título, participante o artículo antes de escribir en disco previene la creación de registros vacíos fantasma cuando el usuario simplemente abre la aplicación o inicia una cuenta en blanco.
+  - [x] **Inyección de Dependencias Mediante Protocol Existentials**: Inyectar `(any ReceiptPersistenceStore)?` en el ViewModel en lugar de un contenedor concreto de SwiftData desacopla la UI de la base de datos, facilitando pruebas deterministas en memoria (`SwiftDataReceiptStore.inMemory()`) y compatibilidad transparente con SwiftUI Previews.
+  - [x] **Ciclo de Vida de Cuentas y Fallback Determinista**: Al eliminar la cuenta activa, conmutar ordenadamente a la cuenta siguiente más reciente o generar una sesión limpia si era la última cuenta garantiza que la interfaz nunca quede en un estado huérfano.
+- **Files implemented**:
+  - [`apps/SplitBill/SplitBill/UI/State/ReceiptEditorViewModel.swift`](apps/SplitBill/SplitBill/UI/State/ReceiptEditorViewModel.swift)
+  - [`apps/SplitBill/SplitBillTests/ReceiptPersistenceTests.swift`](apps/SplitBill/SplitBillTests/ReceiptPersistenceTests.swift)
 
 
 

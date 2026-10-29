@@ -211,4 +211,214 @@ struct ReceiptPersistenceTests {
         #expect(loaded?.resolvedTip == Money(amountInMinorUnits: 4_500, currency: .mxn))
         #expect(loaded?.grandTotal == Money(amountInMinorUnits: 4_500, currency: .mxn))
     }
+
+    // MARK: - ReceiptEditorViewModel Session & Persistence Tests
+
+    @Test("ReceiptEditorViewModel persists changes and restores complete session on relaunch")
+    func viewModelRelaunchRestoresCompleteSession() throws {
+        let store = try SwiftDataReceiptStore.inMemory()
+
+        // 1. Launch first view model instance
+        let vm1 = ReceiptEditorViewModel(currency: .mxn, store: store)
+        vm1.receiptTitle = "Cena con Amigos"
+
+        vm1.newParticipantName = "Ana"
+        vm1.addParticipant()
+        vm1.newParticipantName = "Beto"
+        vm1.addParticipant()
+
+        let anaID = try #require(vm1.participants.first?.id)
+        let betoID = try #require(vm1.participants.last?.id)
+
+        // Add item 1: Tacos for Ana ($150.00)
+        vm1.openNewItemDraft()
+        vm1.activeItemDraft?.name = "Tacos"
+        vm1.activeItemDraft?.unitPriceText = "150.00"
+        vm1.activeItemDraft?.splitModeKind = .wholeItem
+        vm1.activeItemDraft?.selectedParticipantID = anaID
+        vm1.saveActiveDraft()
+
+        // Add item 2: Guacamole shared ($100.00)
+        vm1.openNewItemDraft()
+        vm1.activeItemDraft?.name = "Guacamole"
+        vm1.activeItemDraft?.unitPriceText = "100.00"
+        vm1.activeItemDraft?.splitModeKind = .equal
+        vm1.activeItemDraft?.equalParticipantIDs = [anaID, betoID]
+        vm1.saveActiveDraft()
+
+        vm1.taxText = "40.00"
+        vm1.tipSelection = .percentage(15)
+
+        // Verify vm1 state and that it auto-saved to store
+        #expect(vm1.savedReceipts.count == 1)
+        let saved = try #require(try store.fetch(id: vm1.receiptID))
+        #expect(saved.title == "Cena con Amigos")
+        #expect(saved.participants.count == 2)
+        #expect(saved.items.count == 2)
+
+        // 2. Launch second view model instance pointing to same store (simulates app relaunch)
+        let vm2 = ReceiptEditorViewModel(currency: .mxn, store: store)
+
+        #expect(vm2.receiptID == vm1.receiptID)
+        #expect(vm2.receiptTitle == "Cena con Amigos")
+        #expect(vm2.participants.map(\.name) == ["Ana", "Beto"])
+        #expect(vm2.items.count == 2)
+        #expect(vm2.items[0].name == "Tacos")
+        #expect(vm2.items[1].name == "Guacamole")
+        #expect(vm2.taxText == "40.00")
+        #expect(vm2.resolvedTax == Money(amountInMinorUnits: 4_000, currency: .mxn))
+        #expect(vm2.tipSelection == .percentage(15))
+        #expect(vm2.itemsSubtotal == vm1.itemsSubtotal)
+        #expect(vm2.resolvedTip == vm1.resolvedTip)
+        #expect(vm2.grandTotal == vm1.grandTotal)
+        #expect(vm2.isReceiptValid == true)
+
+        let split1 = try #require(vm1.splitResult)
+        let split2 = try #require(vm2.splitResult)
+        #expect(split1 == split2)
+
+        #expect(vm2.shareableSummaryText.contains("🧾 SplitBill — Cena con Amigos"))
+    }
+
+    @Test("ReceiptEditorViewModel persists custom tip selection and restores it accurately")
+    func viewModelCustomTipRestoration() throws {
+        let store = try SwiftDataReceiptStore.inMemory()
+
+        let vm1 = ReceiptEditorViewModel(currency: .mxn, store: store)
+        vm1.receiptTitle = "Mesa VIP"
+        vm1.newParticipantName = "Hugo"
+        vm1.addParticipant()
+        let hugoID = try #require(vm1.participants.first?.id)
+
+        vm1.openNewItemDraft()
+        vm1.activeItemDraft?.name = "Corte Wagyu"
+        vm1.activeItemDraft?.unitPriceText = "800.00"
+        vm1.activeItemDraft?.splitModeKind = .wholeItem
+        vm1.activeItemDraft?.selectedParticipantID = hugoID
+        vm1.saveActiveDraft()
+
+        vm1.tipSelection = .custom
+        vm1.customTipText = "125.50"
+
+        let vm2 = ReceiptEditorViewModel(currency: .mxn, store: store)
+        #expect(vm2.tipSelection == .custom)
+        #expect(vm2.customTipText == "125.50")
+        #expect(vm2.resolvedTip == Money(amountInMinorUnits: 12_550, currency: .mxn))
+        #expect(vm2.grandTotal == Money(amountInMinorUnits: 92_550, currency: .mxn))
+    }
+
+    @Test("ReceiptEditorViewModel supports starting a new receipt and switching between saved receipts")
+    func viewModelStartNewReceiptAndSwitching() throws {
+        let store = try SwiftDataReceiptStore.inMemory()
+
+        // 1. Create Receipt 1
+        let vm = ReceiptEditorViewModel(currency: .mxn, store: store)
+        vm.receiptTitle = "Comida Italiana"
+        vm.newParticipantName = "Carlos"
+        vm.addParticipant()
+        let carlosID = try #require(vm.participants.first?.id)
+
+        vm.openNewItemDraft()
+        vm.activeItemDraft?.name = "Pasta Carbonara"
+        vm.activeItemDraft?.unitPriceText = "220.00"
+        vm.activeItemDraft?.splitModeKind = .wholeItem
+        vm.activeItemDraft?.selectedParticipantID = carlosID
+        vm.saveActiveDraft()
+
+        let receipt1ID = vm.receiptID
+        #expect(vm.savedReceipts.count == 1)
+
+        // 2. Start new receipt
+        vm.startNewReceipt()
+        #expect(vm.receiptID != receipt1ID)
+        #expect(vm.receiptTitle == "")
+        #expect(vm.participants.isEmpty)
+        #expect(vm.items.isEmpty)
+        #expect(vm.taxText == "")
+        #expect(vm.grandTotal == Money.zero(currency: .mxn))
+
+        // 3. Create Receipt 2
+        vm.receiptTitle = "Café y Postre"
+        vm.newParticipantName = "Diana"
+        vm.addParticipant()
+        let dianaID = try #require(vm.participants.first?.id)
+
+        vm.openNewItemDraft()
+        vm.activeItemDraft?.name = "Cheesecake"
+        vm.activeItemDraft?.unitPriceText = "95.00"
+        vm.activeItemDraft?.splitModeKind = .wholeItem
+        vm.activeItemDraft?.selectedParticipantID = dianaID
+        vm.saveActiveDraft()
+
+        let receipt2ID = vm.receiptID
+        #expect(vm.savedReceipts.count == 2)
+
+        // 4. Switch back to Receipt 1
+        vm.selectReceipt(id: receipt1ID)
+        #expect(vm.receiptID == receipt1ID)
+        #expect(vm.receiptTitle == "Comida Italiana")
+        #expect(vm.participants.map(\.name) == ["Carlos"])
+        #expect(vm.items.first?.name == "Pasta Carbonara")
+
+        // 5. Switch to Receipt 2
+        vm.selectReceipt(id: receipt2ID)
+        #expect(vm.receiptID == receipt2ID)
+        #expect(vm.receiptTitle == "Café y Postre")
+        #expect(vm.participants.map(\.name) == ["Diana"])
+        #expect(vm.items.first?.name == "Cheesecake")
+    }
+
+    @Test("ReceiptEditorViewModel deletes saved receipts and falls back cleanly")
+    func viewModelDeleteSavedReceipt() throws {
+        let store = try SwiftDataReceiptStore.inMemory()
+
+        let vm = ReceiptEditorViewModel(currency: .mxn, store: store)
+
+        // Create Receipt 1
+        vm.receiptTitle = "Cuenta Uno"
+        vm.newParticipantName = "Elena"
+        vm.addParticipant()
+        let r1ID = vm.receiptID
+
+        // Create Receipt 2
+        vm.startNewReceipt()
+        vm.receiptTitle = "Cuenta Dos"
+        vm.newParticipantName = "Fernando"
+        vm.addParticipant()
+        let r2ID = vm.receiptID
+
+        #expect(vm.savedReceipts.count == 2)
+        #expect(vm.receiptID == r2ID)
+
+        // 1. Delete inactive receipt (r1ID) -> active receipt remains unchanged
+        vm.deleteSavedReceipt(id: r1ID)
+        #expect(vm.savedReceipts.count == 1)
+        #expect(vm.receiptID == r2ID)
+        #expect(try store.fetch(id: r1ID) == nil)
+
+        // Recreate a secondary receipt to test active deletion fallback
+        vm.startNewReceipt()
+        vm.receiptTitle = "Cuenta Tres"
+        vm.newParticipantName = "Gabriela"
+        vm.addParticipant()
+        let r3ID = vm.receiptID
+
+        #expect(vm.savedReceipts.count == 2)
+        #expect(vm.receiptID == r3ID)
+
+        // 2. Delete active receipt (r3ID) when another receipt exists -> falls back to r2ID
+        vm.deleteSavedReceipt(id: r3ID)
+        #expect(vm.savedReceipts.count == 1)
+        #expect(vm.receiptID == r2ID)
+        #expect(vm.receiptTitle == "Cuenta Dos")
+        #expect(try store.fetch(id: r3ID) == nil)
+
+        // 3. Delete sole remaining active receipt (r2ID) -> falls back to startNewReceipt()
+        vm.deleteSavedReceipt(id: r2ID)
+        #expect(vm.savedReceipts.isEmpty)
+        #expect(try store.fetch(id: r2ID) == nil)
+        #expect(vm.receiptID != r2ID)
+        #expect(vm.receiptTitle == "")
+        #expect(vm.participants.isEmpty)
+    }
 }
