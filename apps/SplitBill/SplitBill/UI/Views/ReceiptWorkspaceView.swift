@@ -1,13 +1,14 @@
 import SwiftUI
 
 /// The unified workspace screen for SplitBill assembling all modular sections:
-/// Participants, Receipt Items, Tax & Tip, and the Final Per-Person Split Summary.
+/// Account Title, Participants, Receipt Items, Tax & Tip, and the Final Per-Person Split Summary.
 struct ReceiptWorkspaceView: View {
 
     // MARK: - Bindings & State
 
     @Bindable var viewModel: ReceiptEditorViewModel
-    @State private var showResetConfirmation = false
+    @State private var isHistoryPresented = false
+    @State private var showNewReceiptConfirmation = false
 
     // MARK: - Body
 
@@ -15,18 +16,37 @@ struct ReceiptWorkspaceView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
+                    // Section 0: Account Title
+                    sectionCard {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Label("Nombre de la Cuenta", systemImage: "pencil.and.list.clipboard")
+                                .font(.headline)
+                                .foregroundStyle(.primary)
+
+                            TextField("Ej. Cena Taquería, Salida al Cine...", text: $viewModel.receiptTitle)
+                                .textFieldStyle(.roundedBorder)
+                                .textInputAutocapitalization(.sentences)
+                                .autocorrectionDisabled(false)
+                                .accessibilityLabel("Nombre de la cuenta")
+                        }
+                    }
+
+                    // Section 1: Participants & Currency
                     sectionCard {
                         ParticipantsSectionView(viewModel: viewModel)
                     }
 
+                    // Section 2: Items & Assignments
                     sectionCard {
                         ReceiptItemsSectionView(viewModel: viewModel)
                     }
 
+                    // Section 3: Tax & Tip
                     sectionCard {
                         TaxAndTipSectionView(viewModel: viewModel)
                     }
 
+                    // Section 4: Split Summary
                     sectionCard {
                         SplitSummarySectionView(viewModel: viewModel)
                     }
@@ -36,6 +56,17 @@ struct ReceiptWorkspaceView: View {
             }
             .navigationTitle("SplitBill")
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        isHistoryPresented = true
+                    } label: {
+                        Image(systemName: "clock.arrow.circlepath")
+                    }
+                    .accessibilityLabel(
+                        "Mis cuentas guardadas, \(viewModel.savedReceipts.count == 1 ? "1 disponible" : "\(viewModel.savedReceipts.count) disponibles")"
+                    )
+                }
+
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     if viewModel.splitResult != nil && !viewModel.items.isEmpty {
                         ShareLink(item: viewModel.shareableSummaryText) {
@@ -45,24 +76,31 @@ struct ReceiptWorkspaceView: View {
                     }
 
                     Button {
-                        showResetConfirmation = true
+                        if !viewModel.participants.isEmpty || !viewModel.items.isEmpty || !viewModel.receiptTitle.isEmpty {
+                            showNewReceiptConfirmation = true
+                        } else {
+                            viewModel.startNewReceipt()
+                        }
                     } label: {
-                        Image(systemName: "arrow.counterclockwise")
+                        Image(systemName: "square.and.pencil")
                     }
-                    .accessibilityLabel("Reiniciar cuenta")
+                    .accessibilityLabel("Iniciar nueva cuenta")
                 }
             }
+            .sheet(isPresented: $isHistoryPresented) {
+                ReceiptHistorySheet(viewModel: viewModel)
+            }
             .confirmationDialog(
-                "¿Reiniciar cuenta?",
-                isPresented: $showResetConfirmation,
+                "¿Iniciar nueva cuenta?",
+                isPresented: $showNewReceiptConfirmation,
                 titleVisibility: .visible
             ) {
-                Button("Reiniciar todo", role: .destructive) {
-                    viewModel.reset()
+                Button("Nueva cuenta", role: .destructive) {
+                    viewModel.startNewReceipt()
                 }
                 Button("Cancelar", role: .cancel) {}
             } message: {
-                Text("Esta acción borrará todos los comensales, artículos y cálculos registrados. No se puede deshacer.")
+                Text("Se preparará un espacio en blanco. La cuenta actual permanece guardada en tu historial.")
             }
         }
     }

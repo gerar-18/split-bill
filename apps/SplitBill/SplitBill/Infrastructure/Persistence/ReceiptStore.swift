@@ -28,9 +28,16 @@ final class SwiftDataReceiptStore: ReceiptPersistenceStore {
     }
 
     /// Creates a persistent on-disk store for production application execution.
-    static func live() throws -> SwiftDataReceiptStore {
-        let container = try ModelContainer(for: StoredReceipt.self)
-        return SwiftDataReceiptStore(container: container)
+    /// Gracefully falls back to an in-memory store if disk storage initialization fails.
+    static func live() -> SwiftDataReceiptStore {
+        if let container = try? ModelContainer(for: StoredReceipt.self) {
+            return SwiftDataReceiptStore(container: container)
+        }
+        let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
+        guard let fallback = try? ModelContainer(for: StoredReceipt.self, configurations: configuration) else {
+            fatalError("Failed to initialize SwiftData ModelContainer")
+        }
+        return SwiftDataReceiptStore(container: fallback)
     }
 
     func fetchAll() throws -> [ReceiptSnapshot] {

@@ -131,7 +131,7 @@ Status: Completed (4/4 tasks completed)
 
 ## Milestone M3: Persistence (Receipts survive app restarts)
 
-Status: In Progress (2/3 tasks completed)
+Status: Complete (3/3 tasks completed)
 
 ### Task 1: Capa de Infraestructura SwiftData, Mappers y `ReceiptStore` + Tests
 - **Concepts learned**:
@@ -155,6 +155,19 @@ Status: In Progress (2/3 tasks completed)
 - **Files implemented**:
   - [`apps/SplitBill/SplitBill/UI/State/ReceiptEditorViewModel.swift`](apps/SplitBill/SplitBill/UI/State/ReceiptEditorViewModel.swift)
   - [`apps/SplitBill/SplitBillTests/ReceiptPersistenceTests.swift`](apps/SplitBill/SplitBillTests/ReceiptPersistenceTests.swift)
+
+### Task 3: UI de Historial (`ReceiptHistorySheet`), Título de Cuenta e Integración en `MyApp`
+- **Concepts learned**:
+  - [x] **Inicialización Resiliente de Persistencia en `@main`**: Configurar `SwiftDataReceiptStore.live()` con fallback transparente a SQLite en memoria garantiza que fallos imprevistos de permisos en disco jamás provoquen un crash fatal al abrir la app.
+  - [x] **Protección Contra Borrados Accidentales (`allowsFullSwipe: false`)**: Desactivar el borrado por deslizamiento completo en `swipeActions` exige una confirmación táctil deliberada sobre el botón "Eliminar", protegiendo los datos financieros del usuario.
+  - [x] **Síntesis Accesible con Supresión de Hijos (`.accessibilityElement(children: .ignore)`)**: Generar una narración contextual completa para VoiceOver en las filas de historial evita lecturas fragmentadas de caracteres tipográficos decorativos (`•`).
+  - [x] **Eliminación de Redundancias de Estado en la Barra de Herramientas**: Reemplazar acciones destructivas ambiguas ("Reiniciar") por un flujo claro de "Nueva Cuenta" con preservación en el historial garantiza coherencia conceptual con la persistencia automática de M3.
+- **Files implemented**:
+  - [`apps/SplitBill/SplitBill/UI/Views/ReceiptHistorySheet.swift`](apps/SplitBill/SplitBill/UI/Views/ReceiptHistorySheet.swift)
+  - [`apps/SplitBill/SplitBill/UI/Views/ReceiptWorkspaceView.swift`](apps/SplitBill/SplitBill/UI/Views/ReceiptWorkspaceView.swift)
+  - [`apps/SplitBill/SplitBill/ContentView.swift`](apps/SplitBill/SplitBill/ContentView.swift)
+  - [`apps/SplitBill/SplitBill/MyApp.swift`](apps/SplitBill/SplitBill/MyApp.swift)
+  - [`apps/SplitBill/SplitBill/Infrastructure/Persistence/ReceiptStore.swift`](apps/SplitBill/SplitBill/Infrastructure/Persistence/ReceiptStore.swift)
 
 
 
