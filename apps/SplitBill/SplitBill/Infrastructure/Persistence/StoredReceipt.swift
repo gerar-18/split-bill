@@ -6,6 +6,9 @@ import SwiftData
 /// To prevent SQLite relations from shuffling participant array order and to ensure
 /// lossless serialization across all 4 `SplitMode` cases, participants and items are
 /// serialized inside `payloadData` as `ReceiptPayloadDTO`.
+///
+/// Large receipt imagery is stored externally via `@Attribute(.externalStorage)` to prevent
+/// SQLite database bloat while maintaining seamless object-relational mapping.
 @Model
 final class StoredReceipt {
     @Attribute(.unique) var receiptID: UUID
@@ -19,6 +22,7 @@ final class StoredReceipt {
     var tipPercentage: Int?
     var customTipMinorUnits: Int64?
     var payloadData: Data
+    @Attribute(.externalStorage) var receiptImageData: Data?
 
     init(
         receiptID: UUID,
@@ -31,7 +35,8 @@ final class StoredReceipt {
         tipModeRaw: String,
         tipPercentage: Int?,
         customTipMinorUnits: Int64?,
-        payloadData: Data
+        payloadData: Data,
+        receiptImageData: Data? = nil
     ) {
         self.receiptID = receiptID
         self.title = title
@@ -44,6 +49,7 @@ final class StoredReceipt {
         self.tipPercentage = tipPercentage
         self.customTipMinorUnits = customTipMinorUnits
         self.payloadData = payloadData
+        self.receiptImageData = receiptImageData
     }
 
     convenience init(from snapshot: ReceiptSnapshot) throws {
@@ -76,7 +82,8 @@ final class StoredReceipt {
             tipModeRaw: tipModeRaw,
             tipPercentage: tipPercentage,
             customTipMinorUnits: snapshot.customTipMinorUnits,
-            payloadData: data
+            payloadData: data,
+            receiptImageData: snapshot.receiptImageData
         )
     }
 
@@ -108,6 +115,7 @@ final class StoredReceipt {
         self.tipPercentage = tipPercentage
         self.customTipMinorUnits = snapshot.customTipMinorUnits
         self.payloadData = data
+        self.receiptImageData = snapshot.receiptImageData
     }
 
     func toSnapshot() throws -> ReceiptSnapshot {
@@ -137,14 +145,15 @@ final class StoredReceipt {
             items: domainItems,
             tax: tax,
             tipSelection: tipSelection,
-            customTipMinorUnits: customTipMinorUnits
+            customTipMinorUnits: customTipMinorUnits,
+            receiptImageData: receiptImageData
         )
     }
 }
 
 // MARK: - Persistence Data Transfer Objects (DTOs)
 
-struct ReceiptPayloadDTO: Codable, Equatable, Sendable {
+nonisolated struct ReceiptPayloadDTO: Codable, Equatable, Sendable {
     var participants: [ParticipantDTO]
     var items: [ReceiptItemDTO]
 
@@ -154,7 +163,7 @@ struct ReceiptPayloadDTO: Codable, Equatable, Sendable {
     }
 }
 
-struct ParticipantDTO: Codable, Equatable, Sendable {
+nonisolated struct ParticipantDTO: Codable, Equatable, Sendable {
     let id: UUID
     let name: String
 
@@ -168,7 +177,7 @@ struct ParticipantDTO: Codable, Equatable, Sendable {
     }
 }
 
-enum SplitModeDTO: Codable, Equatable, Sendable {
+nonisolated enum SplitModeDTO: Codable, Equatable, Sendable {
     case wholeItem(UUID)
     case equal([UUID])
     case percentage([UUID: Int])
@@ -278,7 +287,7 @@ enum SplitModeDTO: Codable, Equatable, Sendable {
     }
 }
 
-struct ReceiptItemDTO: Codable, Equatable, Sendable {
+nonisolated struct ReceiptItemDTO: Codable, Equatable, Sendable {
     let id: UUID
     let name: String
     let unitPriceMinorUnits: Int64

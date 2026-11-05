@@ -4,7 +4,7 @@ import Foundation
 ///
 /// `ReceiptSnapshot` serves as the intermediary transfer object between the UI,
 /// the SwiftData persistence layer (`StoredReceipt`), and the pure domain model (`Receipt`).
-struct ReceiptSnapshot: Identifiable, Equatable, Sendable {
+nonisolated struct ReceiptSnapshot: Identifiable, Equatable, Sendable {
     let id: UUID
     var title: String
     let createdAt: Date
@@ -15,6 +15,7 @@ struct ReceiptSnapshot: Identifiable, Equatable, Sendable {
     var tax: Money
     var tipSelection: TipSelection
     var customTipMinorUnits: Int64?
+    var receiptImageData: Data?
 
     init(
         id: UUID = UUID(),
@@ -26,7 +27,8 @@ struct ReceiptSnapshot: Identifiable, Equatable, Sendable {
         items: [ReceiptItem] = [],
         tax: Money? = nil,
         tipSelection: TipSelection = .percentage(10),
-        customTipMinorUnits: Int64? = nil
+        customTipMinorUnits: Int64? = nil,
+        receiptImageData: Data? = nil
     ) {
         self.id = id
         self.title = title
@@ -38,6 +40,7 @@ struct ReceiptSnapshot: Identifiable, Equatable, Sendable {
         self.tax = tax ?? Money.zero(currency: currency)
         self.tipSelection = tipSelection
         self.customTipMinorUnits = customTipMinorUnits
+        self.receiptImageData = receiptImageData
     }
 
     /// Sum of all line item totals before tax and tip.
