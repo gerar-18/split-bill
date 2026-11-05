@@ -190,6 +190,15 @@ Status: Complete (3/3 tasks completed)
   - [`apps/SplitBill/SplitBill.xcodeproj/project.pbxproj`](apps/SplitBill/SplitBill.xcodeproj/project.pbxproj)
   - [`README.md`](README.md)
 
+### CI Fix: Compatibilidad de APIs SwiftUI en iOS 18 y Visibilidad de Errores en CI
+- **Concepts learned**:
+  - [x] **Asimetría de Modales en SwiftUI (`.sheet(item:)` vs `.confirmationDialog`)**: Mientras que `.sheet(item:)` acepta un `Binding<Item?>`, la sobrecarga `.confirmationDialog(_:item:)` solo existe en SDKs muy recientes (Xcode 26/27). En iOS 18 (Xcode 16 en GitHub Actions `macos-latest`), `.confirmationDialog` requiere desacoplar visibilidad y payload con `isPresented: Binding<Bool>` + `presenting: T?`, garantizando compatibilidad retroactiva universal.
+  - [x] **Visibilidad de Diagnósticos de Compilación (`-quiet` vs `> /dev/null`)**: Redirigir la salida estándar de `xcodebuild` a `/dev/null` oculta los errores detallados del compilador de Swift en CI. La bandera nativa `-quiet` mantiene la consola limpia durante compilaciones exitosas, pero expone inmediatamente el archivo, la línea y el diagnóstico de error exacto ante cualquier fallo.
+- **Files implemented**:
+  - [`apps/SplitBill/SplitBill/UI/Views/ReceiptItemsSectionView.swift`](apps/SplitBill/SplitBill/UI/Views/ReceiptItemsSectionView.swift)
+  - [`scripts/verify.sh`](scripts/verify.sh)
+
+
 
 
 
