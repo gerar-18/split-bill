@@ -23,8 +23,8 @@ SplitBill is a learning-driven iOS application designed for scanning restaurant 
 | **M1** | Split engine | Deterministic business logic with comprehensive tests (Hamilton split math) | ✅ Complete |
 | **M2** | iOS UI | Complete manual split flow (4 split modes, tip presets, VoiceOver, ShareLink) | ✅ Complete |
 | **M3** | Persistence | Receipts survive app restarts (SwiftData, multi-receipt history, auto-save) | ✅ Complete |
-| **M4** | Camera | Capture and preview receipt image | ⏳ Next |
-| **M5** | OCR | Image to text with evaluation fixtures | 📋 Planned |
+| **M4** | Camera | Capture and preview receipt image (Camera, PhotosPicker, Sample Receipts, Zoom) | ✅ Complete |
+| **M5** | OCR | Image to text with evaluation fixtures | ⏳ Next |
 | **M6** | Intelligent parsing | OCR text to validated structured receipt | 📋 Planned |
 | **M7** | Backend | Cloud synchronization | 📋 Planned |
 | **M8** | Collaboration | Shared receipt workflow | 📋 Planned |

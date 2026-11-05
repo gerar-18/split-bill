@@ -198,6 +198,47 @@ Status: Complete (3/3 tasks completed)
   - [`apps/SplitBill/SplitBill/UI/Views/ReceiptItemsSectionView.swift`](apps/SplitBill/SplitBill/UI/Views/ReceiptItemsSectionView.swift)
   - [`scripts/verify.sh`](scripts/verify.sh)
 
+---
+
+## M4 — Camera & Receipt Image Preview
+
+Status: Completed (3/3 tasks completed)
+
+### Task 1: Persistencia de Imagen, Normalización y Tickets de Muestra
+- **Concepts learned**:
+  - [x] **`@Attribute(.externalStorage)` en SwiftData**: Almacenar blobs binarios grandes (JPEG) directamente en las tablas B-tree de SQLite ralentiza las consultas de listado. Al anotarlo con `.externalStorage`, SwiftData mueve automáticamente los archivos binarios fuera de la base de datos hacia el sandbox de la app, manteniendo SQLite ultra liviano.
+  - [x] **Normalización de Orientación EXIF con `UIGraphicsImageRenderer`**: Los sensores de cámara de smartphones guardan la orientación en metadatos EXIF sin rotar los píxeles reales. Re-dibujar el bitmap con `UIGraphicsImageRenderer` en orientación canónica `.up` garantiza que las futuras etapas de visión por computadora (OCR en M5) lean el texto horizontalmente sin fallos.
+  - [x] **Tipos `nonisolated` en Concurrencia de Swift 6**: Declarar utilidades intensivas en CPU como `ReceiptImageProcessor` y `SampleReceiptImageGenerator` como `public nonisolated enum` permite su ejecución concurrente desde cualquier hilo o actor sin bloquear el `@MainActor` de la interfaz de usuario.
+- **Files implemented**:
+  - [`apps/SplitBill/SplitBill/Infrastructure/Persistence/ReceiptSnapshot.swift`](apps/SplitBill/SplitBill/Infrastructure/Persistence/ReceiptSnapshot.swift)
+  - [`apps/SplitBill/SplitBill/Infrastructure/Persistence/StoredReceipt.swift`](apps/SplitBill/SplitBill/Infrastructure/Persistence/StoredReceipt.swift)
+  - [`apps/SplitBill/SplitBill/Infrastructure/Imaging/ReceiptImageProcessor.swift`](apps/SplitBill/SplitBill/Infrastructure/Imaging/ReceiptImageProcessor.swift)
+  - [`apps/SplitBill/SplitBill/Infrastructure/Imaging/SampleReceiptImageGenerator.swift`](apps/SplitBill/SplitBill/Infrastructure/Imaging/SampleReceiptImageGenerator.swift)
+  - [`apps/SplitBill/SplitBillTests/ReceiptImageTests.swift`](apps/SplitBill/SplitBillTests/ReceiptImageTests.swift)
+
+### Task 2: Ciclo de Vida y Auto-Guardado en `ReceiptEditorViewModel`
+- **Concepts learned**:
+  - [x] **Compuerta de Auto-Guardado con Contenido de Imagen**: Al incluir `receiptImageData != nil` en la condición `hasContent`, una cuenta iniciada simplemente tomando una foto del ticket se persiste automáticamente en SQLite sin esperar a que el usuario ingrese texto.
+  - [x] **Limpieza de Cuentas Huérfanas al Remover Imagen Única**: Si un usuario adjuntó una foto a una cuenta en blanco y luego la elimina, limpiar el registro huérfano de la base de datos evita que la foto eliminada "resucite" al relanzar la app.
+  - [x] **Manejo Seguro de Errores Transaccionales en UI**: Validar y procesar los bytes entrantes antes de mutar el estado reactivo garantiza que ante datos corruptos se informe al usuario mediante `validationMessage` sin alterar la imagen previa.
+- **Files implemented**:
+  - [`apps/SplitBill/SplitBill/UI/State/ReceiptEditorViewModel.swift`](apps/SplitBill/SplitBill/UI/State/ReceiptEditorViewModel.swift)
+  - [`apps/SplitBill/SplitBillTests/ReceiptImageTests.swift`](apps/SplitBill/SplitBillTests/ReceiptImageTests.swift)
+
+### Task 3: Captura con Cámara, Visor Zoomable e Integración en Workspace
+- **Concepts learned**:
+  - [x] **Privacidad Declarativa con `PhotosPicker` vs. Cámara con `UIViewControllerRepresentable`**: `PhotosPicker` opera fuera de proceso y otorga acceso exclusivo a la foto elegida sin solicitar acceso a toda la fototeca. Para la cámara, `CameraCaptureView` conecta `UIImagePickerController` verificando defensivamente `isCameraAvailable` para evitar excepciones en el simulador.
+  - [x] **Composición Fluida de Gestos (`MagnifyGesture` + `DragGesture`)**: Combinar gestos simultáneos con acotación de desplazamiento (*clamping*) y doble toque permite inspeccionar recibos con fluidez nativa a 60/120 FPS sin redecodificar imágenes pesadas en cada frame del `body`.
+  - [x] **Dianas Táctiles Accesibles (HIG de Apple)**: Asegurar áreas mínimas de interacción de 44x44 pt tanto en botones principales como secundarios (`.contentShape(Rectangle())`).
+- **Files implemented**:
+  - [`apps/SplitBill/SplitBill.xcodeproj/project.pbxproj`](apps/SplitBill/SplitBill.xcodeproj/project.pbxproj)
+  - [`apps/SplitBill/SplitBill/UI/Views/CameraCaptureView.swift`](apps/SplitBill/SplitBill/UI/Views/CameraCaptureView.swift)
+  - [`apps/SplitBill/SplitBill/UI/Views/ReceiptImageViewerSheet.swift`](apps/SplitBill/SplitBill/UI/Views/ReceiptImageViewerSheet.swift)
+  - [`apps/SplitBill/SplitBill/UI/Views/ReceiptImageSectionView.swift`](apps/SplitBill/SplitBill/UI/Views/ReceiptImageSectionView.swift)
+  - [`apps/SplitBill/SplitBill/UI/Views/ReceiptWorkspaceView.swift`](apps/SplitBill/SplitBill/UI/Views/ReceiptWorkspaceView.swift)
+  - [`apps/SplitBill/SplitBill/UI/Views/ReceiptHistorySheet.swift`](apps/SplitBill/SplitBill/UI/Views/ReceiptHistorySheet.swift)
+
+
 
 
 
