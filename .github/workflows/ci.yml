@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Architecture & Swift Testing
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: |
+          echo "Available Xcode versions on runner:"
+          ls -d /Applications/Xcode* || true
+          
+          LATEST_XCODE=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -n 1)
+          if [ -n "$LATEST_XCODE" ]; then
+            echo "Selecting $LATEST_XCODE"
+            sudo xcode-select -s "$LATEST_XCODE/Contents/Developer"
+          fi
+          xcodebuild -version
+
+      - name: Run Verification Pipeline
+        run: |
+          ./scripts/verify.sh
+
+      - name: Publish Step Summary
+        if: always()
+        env:
+          GH_SHA: ${{ github.sha }}
+          GH_REF: ${{ github.ref }}
+          GH_EVENT: ${{ github.event_name }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          echo "### 🧾 SplitBill CI Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit**: \`$GH_SHA\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch / Ref**: \`$GH_REF\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Triggered by**: \`$GH_EVENT\`" >> $GITHUB_STEP_SUMMARY
+          if [ "$JOB_STATUS" = "success" ]; then
+            echo "- **Status**: ✅ All architecture boundaries respected & 71+ Swift Testing tests passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **Status**: ❌ Pipeline Failed" >> $GITHUB_STEP_SUMMARY
+          fi

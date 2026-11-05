@@ -178,6 +178,19 @@ Status: Complete (3/3 tasks completed)
   - [`apps/SplitBill/SplitBill/UI/Views/ReceiptItemEditorSheet.swift`](apps/SplitBill/SplitBill/UI/Views/ReceiptItemEditorSheet.swift)
   - [`apps/SplitBill/SplitBillTests/ReceiptEditorViewModelTests.swift`](apps/SplitBill/SplitBillTests/ReceiptEditorViewModelTests.swift)
 
+### M3 Enhancement: Pipeline CI/CD con GitHub Actions y Detección Dinámica de Entornos
+- **Concepts learned**:
+  - [x] **Autodetección Dinámica de Simuladores en CI**: En runners virtuales (GitHub Actions `macos-latest`), los nombres y versiones de simuladores varían según la imagen de Xcode preinstalada. Usar `xcrun simctl list devices available` con filtrado y selección de fallback evita fallos por dispositivos fijos hardcodeados (`iPhone 17` vs `iPhone 16`).
+  - [x] **Compatibilidad de Deployment Target en Proyectos Swift 6**: Ajustar `IPHONEOS_DEPLOYMENT_TARGET` a `18.0` garantiza que el proyecto compile tanto en Xcode local moderno como en entornos de integración continua en la nube, manteniendo acceso a todas las APIs contemporáneas (`@Observable`, `SwiftData`, `Swift Testing`).
+  - [x] **Guardia Estática de Invariantes Financieras en Pre-Commit / CI**: Incorporar un grep estático en `verify.sh` contra `Double` y `Float` en `apps/SplitBill/SplitBill/Domain/` convierte la política de dinero exacto en un bloqueo automatizado en cada Pull Request.
+  - [x] **Optimización de Minutos de CI con Concurrencia**: Configurar `concurrency` con `cancel-in-progress: true` en GitHub Actions cancela inmediatamente ejecuciones redundantes de commits anteriores en la misma rama, optimizando el consumo de minutos de runners macOS.
+- **Files implemented**:
+  - [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
+  - [`scripts/verify.sh`](scripts/verify.sh)
+  - [`apps/SplitBill/SplitBill.xcodeproj/project.pbxproj`](apps/SplitBill/SplitBill.xcodeproj/project.pbxproj)
+  - [`README.md`](README.md)
+
+
 
 
 
