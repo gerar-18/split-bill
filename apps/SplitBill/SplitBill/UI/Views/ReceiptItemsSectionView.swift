@@ -30,7 +30,12 @@ struct ReceiptItemsSectionView: View {
         }
         .confirmationDialog(
             "¿Eliminar artículo?",
-            item: $itemPendingDeletion
+            isPresented: Binding(
+                get: { itemPendingDeletion != nil },
+                set: { if !$0 { itemPendingDeletion = nil } }
+            ),
+            titleVisibility: .visible,
+            presenting: itemPendingDeletion
         ) { item in
             Button("Eliminar \(item.name)", role: .destructive) {
                 viewModel.deleteItem(id: item.id)

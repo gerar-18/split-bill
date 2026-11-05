@@ -32,7 +32,8 @@ xcodebuild -project "${PROJECT_PATH}" \
            -scheme "${SCHEME}" \
            -destination "generic/platform=iOS Simulator" \
            CODE_SIGNING_ALLOWED=NO \
-           build > /dev/null
+           -quiet \
+           build
 echo "✓ Build succeeded."
 
 # 3. Test Check (Swift Testing)
