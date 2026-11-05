@@ -10,6 +10,7 @@ struct ReceiptImageSectionView: View {
     @Bindable var viewModel: ReceiptEditorViewModel
     @State private var isViewerPresented = false
     @State private var isCameraPresented = false
+    @State private var isPhotoPickerPresented = false
     @State private var selectedPhotoItem: PhotosPickerItem? = nil
     @State private var showDeleteConfirmation = false
     @State private var isProcessingPhoto = false
@@ -51,6 +52,11 @@ struct ReceiptImageSectionView: View {
         } message: {
             Text("La imagen se eliminará de esta cuenta. Los participantes y artículos registrados se conservarán.")
         }
+        .photosPicker(
+            isPresented: $isPhotoPickerPresented,
+            selection: $selectedPhotoItem,
+            matching: .images
+        )
         .onChange(of: selectedPhotoItem) { _, newItem in
             guard let newItem else { return }
             loadSelectedPhoto(newItem)
@@ -76,6 +82,7 @@ struct ReceiptImageSectionView: View {
                         .frame(minHeight: 44)
                         .contentShape(Rectangle())
                 }
+                .disabled(isProcessingPhoto)
             }
         }
     }
@@ -117,7 +124,9 @@ struct ReceiptImageSectionView: View {
                     .accessibilityLabel("Tomar foto con la cámara")
                 }
 
-                PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
+                Button {
+                    isPhotoPickerPresented = true
+                } label: {
                     Label("Galería", systemImage: "photo.on.rectangle")
                         .font(.subheadline.weight(.semibold))
                         .frame(maxWidth: .infinity)
@@ -142,6 +151,7 @@ struct ReceiptImageSectionView: View {
                 .buttonStyle(.bordered)
                 .accessibilityLabel("Cargar ticket de ejemplo para pruebas")
             }
+            .disabled(isProcessingPhoto)
 
             if isProcessingPhoto {
                 ProgressView("Procesando imagen...")
@@ -171,21 +181,38 @@ struct ReceiptImageSectionView: View {
                                 .strokeBorder(Color.secondary.opacity(0.2), lineWidth: 0.5)
                         )
 
-                    HStack(spacing: 4) {
-                        Image(systemName: "magnifyingglass")
-                        Text("Ver con Zoom")
+                    if isProcessingPhoto {
+                        ZStack {
+                            Color.black.opacity(0.4)
+                            ProgressView("Procesando imagen...")
+                                .tint(.white)
+                                .foregroundStyle(.white)
+                                .padding(12)
+                                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 10))
+                        }
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                    } else {
+                        HStack(spacing: 4) {
+                            Image(systemName: "magnifyingglass")
+                            Text("Ver con Zoom")
+                        }
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(.black.opacity(0.7), in: .capsule)
+                        .padding(8)
                     }
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(.black.opacity(0.7), in: .capsule)
-                    .padding(8)
                 }
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Foto adjunta del recibo. Toca para ver en pantalla completa con zoom.")
+            .disabled(isProcessingPhoto)
+            .accessibilityLabel(
+                isProcessingPhoto
+                    ? "Procesando nueva foto del recibo..."
+                    : "Foto adjunta del recibo. Toca para ver en pantalla completa con zoom."
+            )
 
             HStack {
                 Button {
@@ -211,6 +238,7 @@ struct ReceiptImageSectionView: View {
                 .buttonStyle(.borderless)
             }
             .padding(.horizontal, 4)
+            .disabled(isProcessingPhoto)
         }
     }
 
@@ -224,7 +252,9 @@ struct ReceiptImageSectionView: View {
             }
         }
 
-        PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
+        Button {
+            isPhotoPickerPresented = true
+        } label: {
             Label("Elegir de galería", systemImage: "photo")
         }
 
@@ -255,6 +285,8 @@ struct ReceiptImageSectionView: View {
             do {
                 if let rawData = try await item.loadTransferable(type: Data.self) {
                     viewModel.attachReceiptImageData(rawData)
+                } else {
+                    viewModel.validationMessage = "No se pudo obtener la imagen seleccionada."
                 }
             } catch {
                 viewModel.validationMessage = "Error al cargar la foto seleccionada."

@@ -238,6 +238,15 @@ Status: Completed (3/3 tasks completed)
   - [`apps/SplitBill/SplitBill/UI/Views/ReceiptWorkspaceView.swift`](apps/SplitBill/SplitBill/UI/Views/ReceiptWorkspaceView.swift)
   - [`apps/SplitBill/SplitBill/UI/Views/ReceiptHistorySheet.swift`](apps/SplitBill/SplitBill/UI/Views/ReceiptHistorySheet.swift)
 
+### Bugfix: Presentación de PhotosPicker dentro de Menús en SwiftUI
+- **Concepts learned**:
+  - [x] **Conflicto de Presentación de `PhotosPicker` dentro de `Menu`**: En SwiftUI (iOS 16+), incrustar un `PhotosPicker` directamente dentro de un elemento `Menu` hace que UIKit lo interprete como un elemento de menú ordinario (`UIAction`). Al hacer tap, el menú se cierra instantáneamente sin permitir que el recognizer de gestos interno de `PhotosPicker` presente el `PHPickerViewController`. El patrón idiomático y universal en SwiftUI es desacoplar el disparador de la presentación: usar un `Button { isPhotoPickerPresented = true }` dentro del menú y vincular la presentación en la vista raíz mediante el modificador `.photosPicker(isPresented:selection:matching:)`.
+  - [x] **Prevención de Carreras y Feedback Visual en Procesamiento Asíncrono**: Deshabilitar los botones de acción y la miniatura mientras `isProcessingPhoto` es verdadero, junto a una superposición con `ProgressView`, previene toques dobles concurrentes y brinda retroalimentación accesible inmediata mientras se transfieren y normalizan los bytes de la imagen.
+- **Files implemented**:
+  - [`apps/SplitBill/SplitBill/UI/Views/ReceiptImageSectionView.swift`](apps/SplitBill/SplitBill/UI/Views/ReceiptImageSectionView.swift)
+
+
+
 
 
 
