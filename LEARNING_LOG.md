@@ -169,6 +169,16 @@ Status: Complete (3/3 tasks completed)
   - [`apps/SplitBill/SplitBill/MyApp.swift`](apps/SplitBill/SplitBill/MyApp.swift)
   - [`apps/SplitBill/SplitBill/Infrastructure/Persistence/ReceiptStore.swift`](apps/SplitBill/SplitBill/Infrastructure/Persistence/ReceiptStore.swift)
 
+### M3 Bugfix: Desbloqueo y Validación Reactiva en `ReceiptItemEditorSheet`
+- **Concepts learned**:
+  - [x] **Toolbar Item Scoping en SwiftUI vs. Estado Local (`@State`)**: Los elementos dentro de `.toolbar` en SwiftUI se renderizan a través de contenedores de navegación fuera del ciclo de actualización directo de la vista. Cuando un botón evalúa `.disabled(!isSaveEnabled)` contra propiedades de un modelo `@Observable` externo, los eventos de teclado en `TextField` pueden no invalidar la barra de herramientas a tiempo. Mantener un `@State` local para el borrador (`draft`) y hacer el botón siempre interactivo con validación imperativa elimina por completo esta fragilidad.
+  - [x] **Validación Informativa sobre Deshabilitación Silenciosa (HIG de Apple)**: Deshabilitar botones de confirmación sin explicar el motivo genera fricción y confusión en el usuario. Permitir que el usuario toque "Guardar" y presentar inmediatamente un banner contextual con borde suave e ícono de advertencia explica con claridad qué dato falta (nombre vacío o importe inválido), guiando al usuario a la solución.
+  - [x] **Limpieza Defensiva de Mensajes de Validación (`.onDisappear`)**: Garantizar que `viewModel.validationMessage = nil` al cerrarse la hoja modal (incluso mediante el gesto de arrastre hacia abajo) previene fugas de mensajes de error hacia otras vistas de la pantalla principal.
+- **Files implemented**:
+  - [`apps/SplitBill/SplitBill/UI/Views/ReceiptItemEditorSheet.swift`](apps/SplitBill/SplitBill/UI/Views/ReceiptItemEditorSheet.swift)
+  - [`apps/SplitBill/SplitBillTests/ReceiptEditorViewModelTests.swift`](apps/SplitBill/SplitBillTests/ReceiptEditorViewModelTests.swift)
+
+
 
 
 

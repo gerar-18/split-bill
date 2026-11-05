@@ -4,50 +4,55 @@ import SwiftUI
 /// Individual (.wholeItem), Partes Iguales (.equal), Porcentaje (.percentage), and Porciones (.portion).
 struct ReceiptItemEditorSheet: View {
 
-    // MARK: - Bindings
+    // MARK: - Bindings & Environment
 
     @Bindable var viewModel: ReceiptEditorViewModel
+    @Environment(\.dismiss) private var dismiss
+
+    // MARK: - Local State
+
+    @State private var draft: ReceiptItemDraft
+
+    // MARK: - Initializer
+
+    init(viewModel: ReceiptEditorViewModel) {
+        self.viewModel = viewModel
+        _draft = State(initialValue: viewModel.activeItemDraft ?? ReceiptItemDraft())
+    }
 
     // MARK: - Body
 
     var body: some View {
         NavigationStack {
-            Group {
-                if let draft = Binding($viewModel.activeItemDraft) {
-                    formContent(draft: draft)
-                } else {
-                    ContentUnavailableView(
-                        "Sin borrador activo",
-                        systemImage: "exclamationmark.triangle",
-                        description: Text("Selecciona o agrega un artículo para editarlo.")
-                    )
-                }
-            }
-            .navigationTitle(navigationTitle)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancelar", role: .cancel) {
-                        viewModel.validationMessage = nil
-                        viewModel.activeItemDraft = nil
+            formContent
+                .navigationTitle(navigationTitle)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancelar", role: .cancel) {
+                            viewModel.validationMessage = nil
+                            viewModel.activeItemDraft = nil
+                            dismiss()
+                        }
                     }
-                }
 
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Guardar") {
-                        viewModel.saveActiveDraft()
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Guardar") {
+                            saveDraftAction()
+                        }
+                        .fontWeight(.bold)
                     }
-                    .fontWeight(.bold)
-                    .disabled(!isSaveEnabled)
                 }
-            }
+                .onDisappear {
+                    viewModel.validationMessage = nil
+                }
         }
     }
 
     // MARK: - Form Content
 
     @ViewBuilder
-    private func formContent(draft: Binding<ReceiptItemDraft>) -> some View {
+    private var formContent: some View {
         Form {
             // Inline Validation Warning Banner
             if let message = viewModel.validationMessage {
@@ -59,28 +64,28 @@ struct ReceiptItemEditorSheet: View {
             }
 
             // Section 1: Item Details
-            itemDetailsSection(draft: draft)
+            itemDetailsSection
 
             // Section 2: Split Mode Selection
-            splitModeSection(draft: draft)
+            splitModeSection
 
             // Section 3: Participant Assignment
-            assignmentSection(draft: draft)
+            assignmentSection
         }
         .scrollDismissesKeyboard(.interactively)
-        .onChange(of: draft.splitModeKind.wrappedValue) { _, newKind in
-            synchronizeDraftDefaults(draft: draft, for: newKind)
+        .onChange(of: draft.splitModeKind) { _, newKind in
+            synchronizeDraftDefaults(for: newKind)
         }
         .onAppear {
-            synchronizeInitialDefaults(draft: draft)
+            synchronizeInitialDefaults()
         }
     }
 
     // MARK: - Sections
 
-    private func itemDetailsSection(draft: Binding<ReceiptItemDraft>) -> some View {
+    private var itemDetailsSection: some View {
         Section("Detalles del Artículo") {
-            TextField("Nombre (ej. Tacos al pastor)", text: draft.name)
+            TextField("Nombre (ej. Tacos al pastor)", text: $draft.name)
                 .textInputAutocapitalization(.sentences)
                 .autocorrectionDisabled(false)
 
@@ -96,7 +101,7 @@ struct ReceiptItemEditorSheet: View {
                         .foregroundStyle(.secondary)
                         .accessibilityHidden(true)
 
-                    TextField("0.00", text: draft.unitPriceText)
+                    TextField("0.00", text: $draft.unitPriceText)
                         .keyboardType(.decimalPad)
                         .monospacedDigit()
                         .multilineTextAlignment(.trailing)
@@ -105,14 +110,14 @@ struct ReceiptItemEditorSheet: View {
                 }
             }
 
-            Stepper("Cantidad: \(draft.quantity.wrappedValue)", value: draft.quantity, in: 1...99)
+            Stepper("Cantidad: \(draft.quantity)", value: $draft.quantity, in: 1...99)
                 .monospacedDigit()
         }
     }
 
-    private func splitModeSection(draft: Binding<ReceiptItemDraft>) -> some View {
+    private var splitModeSection: some View {
         Section("Modo de División") {
-            Picker("Modo", selection: draft.splitModeKind) {
+            Picker("Modo", selection: $draft.splitModeKind) {
                 ForEach(SplitModeKind.allCases) { kind in
                     Text(kind.rawValue).tag(kind)
                 }
@@ -121,17 +126,17 @@ struct ReceiptItemEditorSheet: View {
         }
     }
 
-    private func assignmentSection(draft: Binding<ReceiptItemDraft>) -> some View {
+    private var assignmentSection: some View {
         Section("Asignación de Comensales") {
-            switch draft.splitModeKind.wrappedValue {
+            switch draft.splitModeKind {
             case .wholeItem:
-                wholeItemAssignmentView(draft: draft)
+                wholeItemAssignmentView
             case .equal:
-                equalAssignmentView(draft: draft)
+                equalAssignmentView
             case .percentage:
-                percentageAssignmentView(draft: draft)
+                percentageAssignmentView
             case .portion:
-                portionAssignmentView(draft: draft)
+                portionAssignmentView
             }
         }
     }
@@ -139,12 +144,12 @@ struct ReceiptItemEditorSheet: View {
     // MARK: - Split Mode Specific Subviews
 
     @ViewBuilder
-    private func wholeItemAssignmentView(draft: Binding<ReceiptItemDraft>) -> some View {
+    private var wholeItemAssignmentView: some View {
         if viewModel.participants.isEmpty {
             Text("No hay comensales registrados.")
                 .foregroundStyle(.secondary)
         } else {
-            Picker("Asignar a", selection: draft.selectedParticipantID) {
+            Picker("Asignar a", selection: $draft.selectedParticipantID) {
                 ForEach(viewModel.participants) { participant in
                     Text(participant.name).tag(Optional(participant.id))
                 }
@@ -153,14 +158,14 @@ struct ReceiptItemEditorSheet: View {
     }
 
     @ViewBuilder
-    private func equalAssignmentView(draft: Binding<ReceiptItemDraft>) -> some View {
+    private var equalAssignmentView: some View {
         if viewModel.participants.isEmpty {
             Text("No hay comensales registrados.")
                 .foregroundStyle(.secondary)
         } else {
             HStack {
                 Button("Seleccionar todos") {
-                    draft.equalParticipantIDs.wrappedValue = Set(viewModel.participants.map(\.id))
+                    draft.equalParticipantIDs = Set(viewModel.participants.map(\.id))
                 }
                 .buttonStyle(.borderless)
                 .font(.footnote.weight(.medium))
@@ -168,7 +173,7 @@ struct ReceiptItemEditorSheet: View {
                 Spacer()
 
                 Button("Deseleccionar todos") {
-                    draft.equalParticipantIDs.wrappedValue = []
+                    draft.equalParticipantIDs = []
                 }
                 .buttonStyle(.borderless)
                 .font(.footnote.weight(.medium))
@@ -176,12 +181,12 @@ struct ReceiptItemEditorSheet: View {
             .padding(.vertical, 2)
 
             ForEach(viewModel.participants) { participant in
-                let isSelected = draft.equalParticipantIDs.wrappedValue.contains(participant.id)
+                let isSelected = draft.equalParticipantIDs.contains(participant.id)
                 Button {
                     if isSelected {
-                        draft.equalParticipantIDs.wrappedValue.remove(participant.id)
+                        draft.equalParticipantIDs.remove(participant.id)
                     } else {
-                        draft.equalParticipantIDs.wrappedValue.insert(participant.id)
+                        draft.equalParticipantIDs.insert(participant.id)
                     }
                 } label: {
                     HStack {
@@ -207,12 +212,12 @@ struct ReceiptItemEditorSheet: View {
     }
 
     @ViewBuilder
-    private func percentageAssignmentView(draft: Binding<ReceiptItemDraft>) -> some View {
+    private var percentageAssignmentView: some View {
         if viewModel.participants.isEmpty {
             Text("No hay comensales registrados.")
                 .foregroundStyle(.secondary)
         } else {
-            let total = draft.percentages.wrappedValue.values.reduce(0, +)
+            let total = draft.percentages.values.reduce(0, +)
             let isComplete = (total == 100)
 
             HStack {
@@ -237,7 +242,7 @@ struct ReceiptItemEditorSheet: View {
             .accessibilityLabel("Total asignado: \(total) por ciento de 100 por ciento. \(isComplete ? "Completo" : "Incompleto")")
 
             ForEach(viewModel.participants) { participant in
-                let currentPct = draft.percentages.wrappedValue[participant.id, default: 0]
+                let currentPct = draft.percentages[participant.id, default: 0]
                 HStack {
                     Text(participant.name)
                         .font(.body)
@@ -248,8 +253,8 @@ struct ReceiptItemEditorSheet: View {
                     Stepper(
                         "\(currentPct)%",
                         value: Binding(
-                            get: { draft.percentages.wrappedValue[participant.id, default: 0] },
-                            set: { draft.percentages.wrappedValue[participant.id] = max(0, min(100, $0)) }
+                            get: { draft.percentages[participant.id, default: 0] },
+                            set: { draft.percentages[participant.id] = max(0, min(100, $0)) }
                         ),
                         in: 0...100,
                         step: 1
@@ -261,7 +266,7 @@ struct ReceiptItemEditorSheet: View {
             }
 
             Button("Distribuir equitativamente") {
-                distributePercentageEqually(draft: draft)
+                distributePercentageEqually()
             }
             .buttonStyle(.borderless)
             .font(.footnote)
@@ -269,12 +274,12 @@ struct ReceiptItemEditorSheet: View {
     }
 
     @ViewBuilder
-    private func portionAssignmentView(draft: Binding<ReceiptItemDraft>) -> some View {
+    private var portionAssignmentView: some View {
         if viewModel.participants.isEmpty {
             Text("No hay comensales registrados.")
                 .foregroundStyle(.secondary)
         } else {
-            let totalPortions = draft.portions.wrappedValue.values.reduce(0, +)
+            let totalPortions = draft.portions.values.reduce(0, +)
 
             HStack {
                 Text("Total de Partes")
@@ -293,7 +298,7 @@ struct ReceiptItemEditorSheet: View {
             .accessibilityElement(children: .combine)
 
             ForEach(viewModel.participants) { participant in
-                let shares = draft.portions.wrappedValue[participant.id, default: 0]
+                let shares = draft.portions[participant.id, default: 0]
                 let pct = totalPortions > 0 ? (shares * 100 + totalPortions / 2) / totalPortions : 0
 
                 HStack {
@@ -313,8 +318,8 @@ struct ReceiptItemEditorSheet: View {
                     Stepper(
                         "\(shares)",
                         value: Binding(
-                            get: { draft.portions.wrappedValue[participant.id, default: 0] },
-                            set: { draft.portions.wrappedValue[participant.id] = max(0, min(20, $0)) }
+                            get: { draft.portions[participant.id, default: 0] },
+                            set: { draft.portions[participant.id] = max(0, min(20, $0)) }
                         ),
                         in: 0...20
                     )
@@ -329,7 +334,7 @@ struct ReceiptItemEditorSheet: View {
                 for p in viewModel.participants {
                     newPortions[p.id] = 1
                 }
-                draft.portions.wrappedValue = newPortions
+                draft.portions = newPortions
             }
             .buttonStyle(.borderless)
             .font(.footnote)
@@ -355,59 +360,69 @@ struct ReceiptItemEditorSheet: View {
     // MARK: - Actions & Helpers
 
     private var navigationTitle: String {
-        guard let draft = viewModel.activeItemDraft else { return "Artículo" }
         let isEditing = viewModel.items.contains(where: { $0.id == draft.id })
         return isEditing ? "Editar Artículo" : "Nuevo Artículo"
     }
 
-    private var isSaveEnabled: Bool {
-        guard let draft = viewModel.activeItemDraft else { return false }
-        let trimmed = draft.name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return false }
-        guard let minorUnits = MoneyFormatter.parseMinorUnits(from: draft.unitPriceText, currency: viewModel.currency),
+    private func saveDraftAction() {
+        let trimmedName = draft.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty else {
+            viewModel.validationMessage = "El nombre del artículo no puede estar vacío."
+            return
+        }
+
+        let trimmedPrice = draft.unitPriceText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedPrice.isEmpty,
+              let minorUnits = MoneyFormatter.parseMinorUnits(from: trimmedPrice, currency: viewModel.currency),
               minorUnits >= 0 else {
-            return false
+            viewModel.validationMessage = "Ingresa un precio unitario válido (ej. 150.00)."
+            return
         }
-        return true
-    }
 
-    private func synchronizeInitialDefaults(draft: Binding<ReceiptItemDraft>) {
-        if draft.selectedParticipantID.wrappedValue == nil {
-            draft.selectedParticipantID.wrappedValue = viewModel.participants.first?.id
-        }
-        if draft.equalParticipantIDs.wrappedValue.isEmpty && !viewModel.participants.isEmpty {
-            draft.equalParticipantIDs.wrappedValue = Set(viewModel.participants.map(\.id))
+        viewModel.activeItemDraft = draft
+        viewModel.saveActiveDraft()
+        if viewModel.validationMessage == nil {
+            dismiss()
         }
     }
 
-    private func synchronizeDraftDefaults(draft: Binding<ReceiptItemDraft>, for kind: SplitModeKind) {
+    private func synchronizeInitialDefaults() {
+        if draft.selectedParticipantID == nil {
+            draft.selectedParticipantID = viewModel.participants.first?.id
+        }
+        if draft.equalParticipantIDs.isEmpty && !viewModel.participants.isEmpty {
+            draft.equalParticipantIDs = Set(viewModel.participants.map(\.id))
+        }
+    }
+
+    private func synchronizeDraftDefaults(for kind: SplitModeKind) {
         switch kind {
         case .wholeItem:
-            if draft.selectedParticipantID.wrappedValue == nil {
-                draft.selectedParticipantID.wrappedValue = viewModel.participants.first?.id
+            if draft.selectedParticipantID == nil {
+                draft.selectedParticipantID = viewModel.participants.first?.id
             }
         case .equal:
-            if draft.equalParticipantIDs.wrappedValue.isEmpty && !viewModel.participants.isEmpty {
-                draft.equalParticipantIDs.wrappedValue = Set(viewModel.participants.map(\.id))
+            if draft.equalParticipantIDs.isEmpty && !viewModel.participants.isEmpty {
+                draft.equalParticipantIDs = Set(viewModel.participants.map(\.id))
             }
         case .percentage:
-            let sum = draft.percentages.wrappedValue.values.reduce(0, +)
+            let sum = draft.percentages.values.reduce(0, +)
             if sum == 0 && !viewModel.participants.isEmpty {
-                distributePercentageEqually(draft: draft)
+                distributePercentageEqually()
             }
         case .portion:
-            let sum = draft.portions.wrappedValue.values.reduce(0, +)
+            let sum = draft.portions.values.reduce(0, +)
             if sum == 0 && !viewModel.participants.isEmpty {
                 var newPortions: [Participant.ID: Int] = [:]
                 for p in viewModel.participants {
                     newPortions[p.id] = 1
                 }
-                draft.portions.wrappedValue = newPortions
+                draft.portions = newPortions
             }
         }
     }
 
-    private func distributePercentageEqually(draft: Binding<ReceiptItemDraft>) {
+    private func distributePercentageEqually() {
         let participants = viewModel.participants
         guard !participants.isEmpty else { return }
         let count = participants.count
@@ -418,7 +433,7 @@ struct ReceiptItemEditorSheet: View {
         for (index, p) in participants.enumerated() {
             newPercentages[p.id] = base + (index < remainder ? 1 : 0)
         }
-        draft.percentages.wrappedValue = newPercentages
+        draft.percentages = newPercentages
     }
 
     private func portionDescription(shares: Int, percentage: Int) -> String {

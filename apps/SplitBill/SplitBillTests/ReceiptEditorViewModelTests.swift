@@ -419,4 +419,131 @@ struct ReceiptEditorViewModelTests {
         #expect(vm.itemsSubtotal == Money.zero(currency: .mxn))
         #expect(vm.grandTotal == Money.zero(currency: .mxn))
     }
+
+    // MARK: - Draft Validation & Creation Flow Tests
+
+    @Test("Draft building rejects empty or whitespace-only item name")
+    func draftRejectsEmptyItemName() {
+        let pID = UUID()
+        var draft = ReceiptItemDraft(
+            name: "   ",
+            unitPriceText: "100.00",
+            quantity: 1,
+            splitModeKind: .wholeItem,
+            selectedParticipantID: pID
+        )
+
+        #expect(throws: DomainError.emptyItemName) {
+            try draft.buildItem(currency: .mxn)
+        }
+
+        draft.name = ""
+        #expect(throws: DomainError.emptyItemName) {
+            try draft.buildItem(currency: .mxn)
+        }
+    }
+
+    @Test("Draft building rejects empty or unparseable unit price")
+    func draftRejectsEmptyOrInvalidPrice() {
+        let pID = UUID()
+        var draft = ReceiptItemDraft(
+            name: "Tacos",
+            unitPriceText: "",
+            quantity: 1,
+            splitModeKind: .wholeItem,
+            selectedParticipantID: pID
+        )
+
+        #expect(throws: DomainError.negativeAmount(-1)) {
+            try draft.buildItem(currency: .mxn)
+        }
+
+        draft.unitPriceText = "   "
+        #expect(throws: DomainError.negativeAmount(-1)) {
+            try draft.buildItem(currency: .mxn)
+        }
+
+        draft.unitPriceText = "abc"
+        #expect(throws: DomainError.negativeAmount(-1)) {
+            try draft.buildItem(currency: .mxn)
+        }
+
+        draft.unitPriceText = "-50.00"
+        #expect(throws: DomainError.negativeAmount(-1)) {
+            try draft.buildItem(currency: .mxn)
+        }
+    }
+
+    @Test("Draft building succeeds with zero, integer, and decimal prices")
+    func draftBuildsValidPrices() throws {
+        let pID = UUID()
+
+        // Zero price ("0.00" and "0")
+        let draftZero = ReceiptItemDraft(
+            name: "Vaso de Agua Gratis",
+            unitPriceText: "0.00",
+            quantity: 1,
+            splitModeKind: .wholeItem,
+            selectedParticipantID: pID
+        )
+        let itemZero = try draftZero.buildItem(currency: .mxn)
+        #expect(itemZero.unitPrice == Money(amountInMinorUnits: 0, currency: .mxn))
+
+        // Integer price ("150")
+        let draftInt = ReceiptItemDraft(
+            name: "Tacos",
+            unitPriceText: "150",
+            quantity: 2,
+            splitModeKind: .wholeItem,
+            selectedParticipantID: pID
+        )
+        let itemInt = try draftInt.buildItem(currency: .mxn)
+        #expect(itemInt.unitPrice == Money(amountInMinorUnits: 15_000, currency: .mxn))
+        #expect(itemInt.lineTotal == Money(amountInMinorUnits: 30_000, currency: .mxn))
+
+        // Decimal price ("150.50")
+        let draftDecimal = ReceiptItemDraft(
+            name: "Cerveza Especial",
+            unitPriceText: "150.50",
+            quantity: 1,
+            splitModeKind: .wholeItem,
+            selectedParticipantID: pID
+        )
+        let itemDecimal = try draftDecimal.buildItem(currency: .mxn)
+        #expect(itemDecimal.unitPrice == Money(amountInMinorUnits: 15_050, currency: .mxn))
+        #expect(itemDecimal.lineTotal == Money(amountInMinorUnits: 15_050, currency: .mxn))
+    }
+
+    @Test("Item creation and saving flow in ReceiptEditorViewModel")
+    func itemCreationAndSavingFlow() throws {
+        let vm = ReceiptEditorViewModel()
+        vm.newParticipantName = "Ana"
+        vm.addParticipant()
+        let anaID = try #require(vm.participants.first?.id)
+
+        // 1. Initial draft creation
+        vm.openNewItemDraft()
+        #expect(vm.activeItemDraft != nil)
+        #expect(vm.validationMessage == nil)
+
+        // 2. Setting valid draft details and saving
+        vm.activeItemDraft?.name = "Enchiladas Verdes"
+        vm.activeItemDraft?.unitPriceText = "145.50"
+        vm.activeItemDraft?.quantity = 2
+        vm.activeItemDraft?.splitModeKind = .wholeItem
+        vm.activeItemDraft?.selectedParticipantID = anaID
+        vm.saveActiveDraft()
+
+        // 3. Verifying post-save state
+        #expect(vm.items.count == 1)
+        #expect(vm.activeItemDraft == nil)
+        #expect(vm.validationMessage == nil)
+
+        let savedItem = try #require(vm.items.first)
+        #expect(savedItem.name == "Enchiladas Verdes")
+        #expect(savedItem.quantity == 2)
+        #expect(savedItem.unitPrice == Money(amountInMinorUnits: 14_550, currency: .mxn))
+        #expect(savedItem.lineTotal == Money(amountInMinorUnits: 29_100, currency: .mxn))
+        #expect(savedItem.splitMode == .wholeItem(anaID))
+    }
 }
