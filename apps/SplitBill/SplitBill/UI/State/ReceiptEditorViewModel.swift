@@ -41,6 +41,9 @@ final class ReceiptEditorViewModel {
     var customTipText: String = "" {
         didSet { persistCurrentSession() }
     }
+    var receiptImageData: Data? = nil {
+        didSet { persistCurrentSession() }
+    }
     var activeItemDraft: ReceiptItemDraft? = nil
     var validationMessage: String? = nil
 
@@ -105,6 +108,11 @@ final class ReceiptEditorViewModel {
     /// Indicates whether the receipt is completely valid and ready for final summary.
     var isReceiptValid: Bool {
         currentReceipt != nil
+    }
+
+    /// Whether an image of the physical ticket is currently attached to the receipt.
+    var hasReceiptImage: Bool {
+        receiptImageData != nil
     }
 
     /// Formatted plain text summary suitable for clipboard copying and sharing.
@@ -264,6 +272,31 @@ final class ReceiptEditorViewModel {
         startNewReceipt()
     }
 
+    // MARK: - Receipt Image Actions
+
+    /// Processes and attaches receipt image data (normalizing orientation and downscaling).
+    /// If image processing fails, exposes an informative validation message and preserves the previous image.
+    func attachReceiptImageData(_ rawData: Data) {
+        guard let processed = ReceiptImageProcessor.process(data: rawData) else {
+            validationMessage = "No se pudo procesar la imagen seleccionada."
+            return
+        }
+        receiptImageData = processed
+        validationMessage = nil
+    }
+
+    /// Attaches a synthetic sample receipt image for mock, demo, and testing workflows.
+    func attachSampleReceipt(_ preset: SampleReceiptPreset) {
+        receiptImageData = SampleReceiptImageGenerator.generateImageData(for: preset)
+        validationMessage = nil
+    }
+
+    /// Removes the attached receipt image and persists the updated session.
+    func removeReceiptImage() {
+        receiptImageData = nil
+        validationMessage = nil
+    }
+
     // MARK: - Session & Persistence Actions
 
     /// Refreshes `savedReceipts` from the persistence store.
@@ -298,6 +331,7 @@ final class ReceiptEditorViewModel {
         currency = snapshot.currency
         participants = snapshot.participants
         items = snapshot.items
+        receiptImageData = snapshot.receiptImageData
         taxText = snapshot.tax.amountInMinorUnits > 0 ? MoneyFormatter.decimalString(from: snapshot.tax) : ""
         tipSelection = snapshot.tipSelection
         if let customUnits = snapshot.customTipMinorUnits, customUnits > 0 {
@@ -313,8 +347,14 @@ final class ReceiptEditorViewModel {
     func persistCurrentSession() {
         guard !isRestoringSession, let store else { return }
         let trimmedTitle = receiptTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        let hasContent = !trimmedTitle.isEmpty || !participants.isEmpty || !items.isEmpty
-        guard hasContent else { return }
+        let hasContent = !trimmedTitle.isEmpty || !participants.isEmpty || !items.isEmpty || receiptImageData != nil
+        guard hasContent else {
+            if savedReceipts.contains(where: { $0.id == receiptID }) {
+                try? store.delete(id: receiptID)
+                refreshSavedReceipts()
+            }
+            return
+        }
 
         let customTipUnits: Int64 = tipSelection == .custom
             ? (MoneyFormatter.parseMinorUnits(from: customTipText, currency: currency) ?? 0)
@@ -330,7 +370,8 @@ final class ReceiptEditorViewModel {
             items: items,
             tax: resolvedTax,
             tipSelection: tipSelection,
-            customTipMinorUnits: customTipUnits
+            customTipMinorUnits: customTipUnits,
+            receiptImageData: receiptImageData
         )
 
         do {
@@ -351,6 +392,7 @@ final class ReceiptEditorViewModel {
         receiptTitle = ""
         participants.removeAll()
         items.removeAll()
+        receiptImageData = nil
         newParticipantName = ""
         taxText = ""
         tipSelection = .percentage(10)
