@@ -31,22 +31,27 @@ struct ReceiptWorkspaceView: View {
                         }
                     }
 
-                    // Section 1: Participants & Currency
+                    // Section 1: Receipt Photo & Inspection
+                    sectionCard {
+                        ReceiptImageSectionView(viewModel: viewModel)
+                    }
+
+                    // Section 2: Participants & Currency
                     sectionCard {
                         ParticipantsSectionView(viewModel: viewModel)
                     }
 
-                    // Section 2: Items & Assignments
+                    // Section 3: Items & Assignments
                     sectionCard {
                         ReceiptItemsSectionView(viewModel: viewModel)
                     }
 
-                    // Section 3: Tax & Tip
+                    // Section 4: Tax & Tip
                     sectionCard {
                         TaxAndTipSectionView(viewModel: viewModel)
                     }
 
-                    // Section 4: Split Summary
+                    // Section 5: Split Summary
                     sectionCard {
                         SplitSummarySectionView(viewModel: viewModel)
                     }
@@ -76,7 +81,7 @@ struct ReceiptWorkspaceView: View {
                     }
 
                     Button {
-                        if !viewModel.participants.isEmpty || !viewModel.items.isEmpty || !viewModel.receiptTitle.isEmpty {
+                        if !viewModel.participants.isEmpty || !viewModel.items.isEmpty || !viewModel.receiptTitle.isEmpty || viewModel.hasReceiptImage {
                             showNewReceiptConfirmation = true
                         } else {
                             viewModel.startNewReceipt()

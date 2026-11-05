@@ -83,6 +83,8 @@ struct ReceiptHistorySheet: View {
         let personsText = personsCount == 1 ? "1 persona" : "\(personsCount) personas"
         let itemsText = itemsCount == 1 ? "1 artículo" : "\(itemsCount) artículos"
 
+        let hasImage = snapshot.receiptImageData != nil
+
         return HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
@@ -91,6 +93,13 @@ struct ReceiptHistorySheet: View {
                         .foregroundStyle(isUntitled ? .secondary : .primary)
                         .italic(isUntitled)
                         .lineLimit(1)
+
+                    if hasImage {
+                        Image(systemName: "doc.text.image")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .accessibilityHidden(true)
+                    }
 
                     if isActive {
                         Text("Activa")
@@ -122,7 +131,7 @@ struct ReceiptHistorySheet: View {
         .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
-            "\(displayTitle)\(isActive ? ", cuenta activa" : ""), \(MoneyFormatter.string(from: snapshot.grandTotal)), \(personsText), \(itemsText), actualizada \(snapshot.updatedAt.formatted(.relative(presentation: .named)))"
+            "\(displayTitle)\(isActive ? ", cuenta activa" : "")\(hasImage ? ", con foto de recibo" : ""), \(MoneyFormatter.string(from: snapshot.grandTotal)), \(personsText), \(itemsText), actualizada \(snapshot.updatedAt.formatted(.relative(presentation: .named)))"
         )
         .accessibilityHint("Toca dos veces para abrir y editar esta cuenta")
     }
