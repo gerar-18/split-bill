@@ -281,17 +281,19 @@ Status: Completed (3/3 tasks completed)
   - [`apps/SplitBill/SplitBill/UI/Views/ReceiptOCRTextSheet.swift`](apps/SplitBill/SplitBill/UI/Views/ReceiptOCRTextSheet.swift)
   - [`apps/SplitBill/SplitBill/UI/Views/ReceiptImageSectionView.swift`](apps/SplitBill/SplitBill/UI/Views/ReceiptImageSectionView.swift)
 
+---
 
+## CI/CD — Optimización del Pipeline de Verificación y Eliminación del Timeout del Simulador
 
+Status: Completed
 
+### Concepts learned:
+- [x] **Diagnóstico del Timeout de 600s (10 min) en CoreSimulator (`IDETestOperationsObserverDebug`)**: En máquinas virtuales compartidas de GitHub Actions (`macos-latest`), ejecutar `xcodebuild test` contra un simulador frío/apagado provoca que el arranque en cascada de servicios de CoreSimulator compita con la inyección del ejecutable de prueba. `IDETestOperationsObserverDebug` de Xcode espera exactamente 600.0 segundos (10 minutos) antes de continuar o colgarse.
+- [x] **Arranque Determinista de Simuladores con `xcrun simctl bootstatus -b`**: Detectar el UUID del dispositivo disponible (`SIM_ID`), lanzar `xcrun simctl boot "$SIM_ID"` y esperar a que el sistema operativo del simulador esté completamente listo con `xcrun simctl bootstatus "$SIM_ID" -b` (espera a SpringBoard) antes de invocar `xcodebuild` elimina las carreras de arranque y el timeout de 10 minutos.
+- [x] **Compilación en Pasada Única (`build-for-testing` + `test-without-building`)**: Anteriormente, [`scripts/verify.sh`](scripts/verify.sh) ejecutaba un `xcodebuild build` para destino genérico (`generic/platform=iOS Simulator`) y después un `xcodebuild test` para un simulador concreto (`platform=iOS Simulator,name=...`). Debido a la incompatibilidad de arquitecturas/slices, Xcode reconstruía el proyecto y la suite de pruebas dos veces completas (~6 minutos en CI). Cambiar a `build-for-testing` y `test-without-building` sobre el mismo destino con `-enableCodeCoverage NO` unifica la compilación en una sola pasada.
+- [x] **Caché de `DerivedData` con `actions/cache@v4` y `timeout-minutes: 10`**: Guardar y restaurar `~/Library/Developer/Xcode/DerivedData` indexado por el hash de archivos Swift y proyecto Xcode permite compilaciones incrementales ultra-rápidas en CI sin degradar el rigor de validación de arquitectura ADR-002 ni la ejecución de los 92+ tests unitarios.
 
-
-
-
-
-
-
-
-
-
+### Files modified:
+- [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
+- [`scripts/verify.sh`](scripts/verify.sh)
 

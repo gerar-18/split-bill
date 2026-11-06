@@ -15,6 +15,7 @@ jobs:
   verify:
     name: Architecture & Swift Testing
     runs-on: macos-latest
+    timeout-minutes: 10
 
     steps:
       - name: Checkout Repository
@@ -31,6 +32,14 @@ jobs:
             sudo xcode-select -s "$LATEST_XCODE/Contents/Developer"
           fi
           xcodebuild -version
+
+      - name: Cache DerivedData
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Developer/Xcode/DerivedData
+          key: ${{ runner.os }}-deriveddata-${{ hashFiles('apps/SplitBill/**/*.swift', 'apps/SplitBill/**/*.xcodeproj/**') }}
+          restore-keys: |
+            ${{ runner.os }}-deriveddata-
 
       - name: Run Verification Pipeline
         run: |
@@ -49,7 +58,7 @@ jobs:
           echo "- **Branch / Ref**: \`$GH_REF\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Triggered by**: \`$GH_EVENT\`" >> $GITHUB_STEP_SUMMARY
           if [ "$JOB_STATUS" = "success" ]; then
-            echo "- **Status**: ✅ All architecture boundaries respected & 71+ Swift Testing tests passed" >> $GITHUB_STEP_SUMMARY
+            echo "- **Status**: ✅ All architecture boundaries respected & Swift Testing suite passed" >> $GITHUB_STEP_SUMMARY
           else
             echo "- **Status**: ❌ Pipeline Failed" >> $GITHUB_STEP_SUMMARY
           fi
