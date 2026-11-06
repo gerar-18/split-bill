@@ -137,42 +137,47 @@ public nonisolated final class VisionReceiptOCRService: ReceiptOCRService {
         }
 
         do {
-            // Offload CPU/Vision-intensive task to cooperative thread pool
-            let tokens = try await Task.detached(priority: .userInitiated) { () throws -> [ReceiptOCRToken] in
-                let request = VNRecognizeTextRequest()
-                request.recognitionLevel = .accurate
-                request.usesLanguageCorrection = true
-                request.recognitionLanguages = ["es-MX", "es-ES", "en-US"]
+            // Offload CPU/Vision-intensive task to a dedicated GCD queue via checked continuation
+            // to avoid starving Swift Concurrency's cooperative thread pool.
+            let tokens: [ReceiptOCRToken] = try await withCheckedThrowingContinuation { continuation in
+                DispatchQueue.global(qos: .userInitiated).async {
+                    let request = VNRecognizeTextRequest()
+                    request.recognitionLevel = .accurate
+                    request.usesLanguageCorrection = true
+                    request.recognitionLanguages = ["es-MX", "es-ES", "en-US"]
 
-                let handler = VNImageRequestHandler(cgImage: cgImage, orientation: orientation, options: [:])
-                do {
-                    try handler.perform([request])
-                } catch {
-                    throw ReceiptOCRError.recognitionFailed(error.localizedDescription)
-                }
-
-                guard let observations = request.results else {
-                    return []
-                }
-
-                var extractedTokens: [ReceiptOCRToken] = []
-                for observation in observations {
-                    guard let topCandidate = observation.topCandidates(1).first else {
-                        continue
+                    let handler = VNImageRequestHandler(cgImage: cgImage, orientation: orientation, options: [:])
+                    do {
+                        try handler.perform([request])
+                    } catch {
+                        continuation.resume(throwing: ReceiptOCRError.recognitionFailed(error.localizedDescription))
+                        return
                     }
-                    let cleanedText = topCandidate.string.trimmingCharacters(in: .whitespacesAndNewlines)
-                    guard !cleanedText.isEmpty else { continue }
 
-                    extractedTokens.append(
-                        ReceiptOCRToken(
-                            text: cleanedText,
-                            confidence: topCandidate.confidence,
-                            boundingBox: observation.boundingBox
+                    guard let observations = request.results else {
+                        continuation.resume(returning: [])
+                        return
+                    }
+
+                    var extractedTokens: [ReceiptOCRToken] = []
+                    for observation in observations {
+                        guard let topCandidate = observation.topCandidates(1).first else {
+                            continue
+                        }
+                        let cleanedText = topCandidate.string.trimmingCharacters(in: .whitespacesAndNewlines)
+                        guard !cleanedText.isEmpty else { continue }
+
+                        extractedTokens.append(
+                            ReceiptOCRToken(
+                                text: cleanedText,
+                                confidence: topCandidate.confidence,
+                                boundingBox: observation.boundingBox
+                            )
                         )
-                    )
+                    }
+                    continuation.resume(returning: extractedTokens)
                 }
-                return extractedTokens
-            }.value
+            }
 
             if Task.isCancelled {
                 return .empty

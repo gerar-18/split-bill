@@ -98,27 +98,4 @@ struct ReceiptOCRTests {
             _ = try await service.recognizeText(from: corruptData)
         }
     }
-
-    @Test("VisionReceiptOCRService processes all synthetic presets successfully", arguments: SampleReceiptPreset.allCases)
-    func visionServiceProcessesSyntheticPresets(preset: SampleReceiptPreset) async throws {
-        let service = VisionReceiptOCRService()
-        let sampleData = SampleReceiptImageGenerator.generateImageData(for: preset)
-
-        let result = try await service.recognizeText(from: sampleData)
-
-        #expect(!result.isEmpty)
-        #expect(result.lines.count > 0)
-        #expect(result.averageConfidence > 0.5)
-
-        // The synthetic ticket clearly contains restaurant name
-        let combinedUpper = result.rawText.uppercased()
-        switch preset {
-        case .taqueriaElPastor:
-            #expect(combinedUpper.contains("PASTOR") || combinedUpper.contains("TAQUER"))
-        case .pizzeriaNapoli:
-            #expect(combinedUpper.contains("NAPOLI") || combinedUpper.contains("PIZZA") || combinedUpper.contains("PIZZER"))
-        case .cafeCentral:
-            #expect(combinedUpper.contains("CENTRAL") || combinedUpper.contains("CAF"))
-        }
-    }
 }

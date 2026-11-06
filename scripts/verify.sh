@@ -29,27 +29,40 @@ echo "✓ Architecture boundaries and financial invariants respected."
 # Determine Destination & Simulator Device
 SIM_LINE=""
 if [ -z "${DESTINATION:-}" ]; then
-    if SIM_LINE=$(xcrun simctl list devices available | grep -E "iPhone 17 \(" | head -n 1) && [ -n "${SIM_LINE}" ]; then
+    if SIM_LINE=$(xcrun simctl list devices available | grep -E "iPhone 17 \(" | tail -n 1) && [ -n "${SIM_LINE}" ]; then
         SIM_NAME="iPhone 17"
-    elif SIM_LINE=$(xcrun simctl list devices available | grep -E "iPhone 16 \(" | head -n 1) && [ -n "${SIM_LINE}" ]; then
+    elif SIM_LINE=$(xcrun simctl list devices available | grep -E "iPhone 16 \(" | tail -n 1) && [ -n "${SIM_LINE}" ]; then
         SIM_NAME="iPhone 16"
-    elif SIM_LINE=$(xcrun simctl list devices available | grep -E "iPhone " | head -n 1) && [ -n "${SIM_LINE}" ]; then
+    elif SIM_LINE=$(xcrun simctl list devices available | grep -E "iPhone " | tail -n 1) && [ -n "${SIM_LINE}" ]; then
         SIM_NAME=$(echo "${SIM_LINE}" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+\(.*//')
     else
         SIM_NAME="iPhone 16"
         SIM_LINE=""
     fi
-    DESTINATION="platform=iOS Simulator,name=${SIM_NAME}"
+
+    SIM_ID=$(echo "${SIM_LINE:-}" | grep -o -E '[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}' | head -n 1 || true)
+    if [ -n "${SIM_ID}" ]; then
+        DESTINATION="platform=iOS Simulator,id=${SIM_ID}"
+    else
+        DESTINATION="platform=iOS Simulator,name=${SIM_NAME}"
+    fi
+else
+    SIM_ID=$(echo "${DESTINATION}" | grep -o -E '[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}' | head -n 1 || true)
 fi
 
 # Pre-boot simulator if an available device UUID is identified and not yet booted
-SIM_ID=$(echo "${SIM_LINE:-}" | grep -o -E '[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}' | head -n 1 || true)
 if [ -n "${SIM_ID}" ]; then
     if ! xcrun simctl list devices | grep "${SIM_ID}" | grep -q "Booted"; then
-        echo "--> Pre-booting simulator ${SIM_NAME} (${SIM_ID})..."
+        echo "--> Pre-booting simulator ${SIM_NAME:-iOS Simulator} (${SIM_ID})..."
         xcrun simctl boot "${SIM_ID}" 2>/dev/null || true
         xcrun simctl bootstatus "${SIM_ID}" -b
     fi
+fi
+
+# Pass CI flag into the simulator environment so heavy neural tests know to run headless-safe
+if [ -n "${CI:-}" ]; then
+    export TEST_RUNNER_CI="${CI}"
+    export SIMCTL_CHILD_CI="${CI}"
 fi
 
 # 2. Build for Testing (Single-pass build avoiding duplicate compilation)
@@ -70,7 +83,7 @@ xcodebuild test-without-building \
            -destination "${DESTINATION}" \
            CODE_SIGNING_ALLOWED=NO \
            -enableCodeCoverage NO \
-           -quiet
+           -parallel-testing-enabled NO
 echo "✓ All tests passed!"
 
 echo "=============================================="
