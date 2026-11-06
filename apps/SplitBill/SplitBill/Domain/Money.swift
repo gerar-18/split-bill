@@ -4,6 +4,13 @@ import Foundation
 nonisolated struct Currency: Equatable, Hashable, Sendable {
     let code: String
     let minorUnitScale: Int
+    var symbol: String {
+        switch code.uppercased() {
+        case "EUR": return "€"
+        case "GBP": return "£"
+        default: return "$"
+        }
+    }
 
     static let mxn = Currency(code: "MXN", minorUnitScale: 2)
     static let usd = Currency(code: "USD", minorUnitScale: 2)

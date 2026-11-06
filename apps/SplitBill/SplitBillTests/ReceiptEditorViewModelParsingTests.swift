@@ -335,4 +335,30 @@ struct ReceiptEditorViewModelParsingTests {
         #expect(!vm.isShowingParsedReviewSheet)
         #expect(vm.importValidationErrorMessage == nil)
     }
+
+    @Test("detectedParsedItemCount and detectedReconciliationStatus reflect OCR parsing reactively")
+    func detectedParsedMetadataProperties() async {
+        let lines = [
+            ReceiptOCRLine(text: "CAFE ORO", tokens: [], confidence: 1.0, boundingBox: .zero),
+            ReceiptOCRLine(text: "1 Espresso $45.00", tokens: [], confidence: 1.0, boundingBox: .zero),
+            ReceiptOCRLine(text: "TOTAL $45.00", tokens: [], confidence: 1.0, boundingBox: .zero)
+        ]
+        let mockOCR = MockOCRService(
+            result: ReceiptOCRResult(
+                lines: lines,
+                rawText: lines.map(\.text).joined(separator: "\n"),
+                averageConfidence: 1.0
+            )
+        )
+        let vm = ReceiptEditorViewModel(ocrService: mockOCR)
+        vm.receiptImageData = Data([0x01])
+
+        #expect(vm.detectedParsedItemCount == 0)
+        #expect(vm.detectedReconciliationStatus == nil)
+
+        await vm.recognizeReceiptText()
+
+        #expect(vm.detectedParsedItemCount == 1)
+        #expect(vm.detectedReconciliationStatus == .verified)
+    }
 }

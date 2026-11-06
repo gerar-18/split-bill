@@ -71,6 +71,34 @@ final class ReceiptEditorViewModel {
         lastOCRResult?.lines.count ?? (ocrRawText?.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }.count ?? 0)
     }
 
+    /// Count of parsed candidate items detected, or 0.
+    var detectedParsedItemCount: Int {
+        if let candidate = parsedCandidate {
+            return candidate.items.count
+        }
+        if let lines = lastOCRResult?.lines.map(\.text), !lines.isEmpty {
+            return receiptParser.parse(lines: lines, currency: currency).items.count
+        }
+        if let raw = ocrRawText, !raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return receiptParser.parse(rawText: raw, currency: currency).items.count
+        }
+        return 0
+    }
+
+    /// Status of reconciliation for the candidate if available.
+    var detectedReconciliationStatus: ReceiptReconciliationStatus? {
+        if let candidate = parsedCandidate {
+            return candidate.reconciliation.status
+        }
+        if let lines = lastOCRResult?.lines.map(\.text), !lines.isEmpty {
+            return receiptParser.parse(lines: lines, currency: currency).reconciliation.status
+        }
+        if let raw = ocrRawText, !raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return receiptParser.parse(rawText: raw, currency: currency).reconciliation.status
+        }
+        return nil
+    }
+
     var activeItemDraft: ReceiptItemDraft? = nil
     var validationMessage: String? = nil
 

@@ -17,6 +17,10 @@ struct ReceiptOCRTextSheet: View {
             VStack(spacing: 0) {
                 headerSummaryBanner
 
+                if viewModel.hasOCRText {
+                    analyzeAndImportBanner
+                }
+
                 if shouldShowQuickAction {
                     quickActionBanner
                 }
@@ -37,6 +41,19 @@ struct ReceiptOCRTextSheet: View {
 
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     if viewModel.hasOCRText {
+                        Button {
+                            dismiss()
+                            Task { @MainActor in
+                                try? await Task.sleep(for: .milliseconds(300))
+                                viewModel.prepareParsedReceiptReview()
+                            }
+                        } label: {
+                            Label("Analizar", systemImage: "sparkles")
+                                .fontWeight(.semibold)
+                        }
+                        .frame(minHeight: 44)
+                        .accessibilityLabel("Analizar texto del ticket y abrir revisión de platillos")
+
                         Button {
                             copyTextToClipboard()
                         } label: {
@@ -104,6 +121,53 @@ struct ReceiptOCRTextSheet: View {
         .background(.background.secondary)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(headerAccessibilityLabel)
+    }
+
+    private var analyzeAndImportBanner: some View {
+        Button {
+            dismiss()
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(300))
+                viewModel.prepareParsedReceiptReview()
+            }
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "sparkles")
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(.white)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    let count = viewModel.detectedParsedItemCount
+                    if count > 0 {
+                        Text("Analizar e importar (\(count) \(count == 1 ? "platillo" : "platillos"))")
+                            .font(.subheadline.weight(.bold))
+                            .foregroundStyle(.white)
+                    } else {
+                        Text("Analizar e importar platillos")
+                            .font(.subheadline.weight(.bold))
+                            .foregroundStyle(.white)
+                    }
+
+                    Text("Revisa cantidades y totales antes de agregarlos a la cuenta")
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.85))
+                }
+
+                Spacer()
+
+                Image(systemName: "arrow.right.circle.fill")
+                    .font(.title3)
+                    .foregroundStyle(.white)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(Color.accentColor, in: RoundedRectangle(cornerRadius: 12))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .accessibilityLabel("Analizar texto del ticket y abrir revisión de platillos")
     }
 
     private var shouldShowQuickAction: Bool {

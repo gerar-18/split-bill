@@ -45,6 +45,9 @@ struct ReceiptImageSectionView: View {
         .sheet(isPresented: $isOCRSheetPresented) {
             ReceiptOCRTextSheet(viewModel: viewModel)
         }
+        .sheet(isPresented: $viewModel.isShowingParsedReviewSheet) {
+            ReceiptParsedReviewSheet(viewModel: viewModel)
+        }
         .confirmationDialog(
             "¿Eliminar foto del recibo?",
             isPresented: $showDeleteConfirmation,
@@ -266,34 +269,8 @@ struct ReceiptImageSectionView: View {
             .background(.background.tertiary, in: RoundedRectangle(cornerRadius: 8))
             .accessibilityElement(children: .combine)
             .accessibilityLabel("Reconociendo texto del ticket con OCR en progreso")
-        } else if viewModel.hasOCRText {
-            Button {
-                isOCRSheetPresented = true
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "text.viewfinder")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Color.accentColor)
-
-                    Text("Ver texto del ticket (\(viewModel.ocrLineCount) líneas)")
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(.primary)
-
-                    Spacer()
-
-                    Image(systemName: "chevron.right")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.horizontal, 12)
-                .frame(maxWidth: .infinity)
-                .frame(minHeight: 44)
-                .background(.background.tertiary, in: RoundedRectangle(cornerRadius: 8))
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Ver texto detectado del ticket, \(viewModel.ocrLineCount) líneas encontradas")
-            .accessibilityHint("Abre la hoja para inspeccionar y copiar el texto OCR")
+        } else if viewModel.hasOCRText || viewModel.parsedCandidate != nil {
+            ocrParsedActionsView
         } else {
             Button {
                 Task {
@@ -311,6 +288,91 @@ struct ReceiptImageSectionView: View {
             }
             .buttonStyle(.bordered)
             .accessibilityLabel("Extraer texto del ticket con OCR")
+        }
+    }
+
+    private var ocrParsedActionsView: some View {
+        VStack(spacing: 8) {
+            Button {
+                viewModel.prepareParsedReceiptReview()
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "sparkles.rectangle.stack")
+                        .font(.subheadline.weight(.semibold))
+
+                    let count = viewModel.detectedParsedItemCount
+                    Text("Revisar e importar (\(count) \(count == 1 ? "platillo" : "platillos"))")
+                        .font(.subheadline.weight(.semibold))
+
+                    Spacer()
+
+                    reconciliationBadge
+                }
+                .padding(.horizontal, 12)
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: 44)
+            }
+            .buttonStyle(.borderedProminent)
+            .accessibilityLabel("Revisar e importar \(viewModel.detectedParsedItemCount) platillos detectados del recibo")
+
+            Button {
+                isOCRSheetPresented = true
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "text.viewfinder")
+                    Text("Ver texto OCR (\(viewModel.ocrLineCount) líneas)")
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption2.weight(.semibold))
+                }
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 12)
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: 36)
+                .background(.background.tertiary, in: RoundedRectangle(cornerRadius: 8))
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Ver texto OCR del ticket, \(viewModel.ocrLineCount) líneas encontradas")
+        }
+    }
+
+    @ViewBuilder
+    private var reconciliationBadge: some View {
+        if let status = viewModel.detectedReconciliationStatus {
+            switch status {
+            case .verified:
+                HStack(spacing: 4) {
+                    Image(systemName: "checkmark.circle.fill")
+                    Text("Verificado")
+                }
+                .font(.caption2.weight(.bold))
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(Color.white.opacity(0.2), in: Capsule())
+            case .discrepancy(let diff, let currency):
+                HStack(spacing: 4) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                    let formatted = MoneyFormatter.string(from: Money(amountInMinorUnits: abs(diff), currency: currency), includeCurrencyCode: false)
+                    Text("Δ \(formatted)")
+                }
+                .font(.caption2.weight(.bold))
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(Color.orange.opacity(0.3), in: Capsule())
+            case .partial:
+                HStack(spacing: 4) {
+                    Image(systemName: "info.circle.fill")
+                    Text("Parcial")
+                }
+                .font(.caption2.weight(.bold))
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(Color.white.opacity(0.2), in: Capsule())
+            case .empty:
+                EmptyView()
+            }
         }
     }
 

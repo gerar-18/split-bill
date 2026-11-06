@@ -303,3 +303,44 @@ Status: Completed
 - [`apps/SplitBill/SplitBillTests/ReceiptOCREvaluationTests.swift`](apps/SplitBill/SplitBillTests/ReceiptOCREvaluationTests.swift)
 - [`scripts/verify.sh`](scripts/verify.sh)
 
+---
+
+## M6 — Intelligent Parsing: Del Texto OCR al Recibo Estructurado y Validado
+
+Status: Completed (3/3 tasks completed)
+
+### Task 1: Motor Determinista de Parsing (`DeterministicReceiptParser`) y Reconciliación Diagnóstica
+- **Concepts learned**:
+  - [x] **Arquitectura Determinista Primero vs. Dependencia de LLMs (ADR-003)**: Un parser determinístico basado en expresiones regulares y análisis posicional/semántico opera en <1 milisegundo, sin costo de inferencia, 100% offline, respetando la privacidad del usuario y garantizando resultados reproducibles. El diagnóstico de reconciliación matemática ($\sum \text{ítems} + \text{IVA} == \text{Total}$) actúa como árbitro objetivo infalible.
+  - [x] **Lookbehind Semántico y Preservación de Centavos en Paquetes Indivisibles**: En líneas de detalle como `"(2 @ $85.00)"` o combos `"$100.00"` donde la división unitaria generaría centavos fraccionarios (ej. $33.3333$), el parser inspecciona la línea previa y valida que el total acumulado coincida exactamente con el precio entero en centavos, vinculando cantidad y precio unitario sin distorsionar el total.
+  - [x] **Clasificación por Capas y Eliminación de Ruido**: Filtrado ordenado de separadores (`====`, `----`), encabezados de tabla (`CANT DESCRIPCION IMPORTE`), formas de pago/cambio (`EFECTIVO`, `CAMBIO`), metadatos (`RFC`, `FECHA`, `MESA`), líneas de resumen (`SUBTOTAL`, `IVA`, `PROPINA`, `TOTAL`) y líneas de platillos con cantidades prefijas/postfijas.
+- **Files implemented**:
+  - [`apps/SplitBill/SplitBill/Domain/MoneyParser.swift`](apps/SplitBill/SplitBill/Domain/MoneyParser.swift)
+  - [`apps/SplitBill/SplitBill/Domain/ReceiptParser.swift`](apps/SplitBill/SplitBill/Domain/ReceiptParser.swift)
+  - [`apps/SplitBill/SplitBill/Domain/DeterministicReceiptParser.swift`](apps/SplitBill/SplitBill/Domain/DeterministicReceiptParser.swift)
+  - [`apps/SplitBill/SplitBillTests/ReceiptParserTests.swift`](apps/SplitBill/SplitBillTests/ReceiptParserTests.swift)
+
+### Task 2: Modelo Borrador UI Human-in-the-Loop (`ParsedReceiptReviewDraft`) y Orquestación en `ReceiptEditorViewModel`
+- **Concepts learned**:
+  - [x] **Patrón Human-in-the-Loop como Guardián de Invariantes de Dominio (ADR-002)**: La visión por computadora y el OCR son inherentemente probabilísticos. En lugar de inyectar platillos no confirmados directamente al modelo `Receipt`, `ParsedReceiptReviewDraft` y `EditableParsedItemDraft` actúan como un buffer editable intermedio donde el usuario valida cantidades, nombres y precios.
+  - [x] **Diagnóstico Reactivo en Tiempo Real**: Con el framework `Observation`, cada edición en el precio unitario, cantidad o toggle de inclusión recalcula en vivo el estado de reconciliación (`.verified`, `.discrepancy`, `.partial`), mostrando la diferencia exacta en centavos al usuario antes de importar.
+  - [x] **Transacciones Seguras de Importación (Reemplazo vs. Suma)**: Ofrecer la opción de reemplazar o anexar platillos con asignación inicial en partes iguales (`.equal`) entre los comensales existentes, impidiendo la importación si la mesa no tiene comensales registrados.
+- **Files implemented**:
+  - [`apps/SplitBill/SplitBill/UI/State/ParsedReceiptReviewDraft.swift`](apps/SplitBill/SplitBill/UI/State/ParsedReceiptReviewDraft.swift)
+  - [`apps/SplitBill/SplitBill/UI/State/ReceiptEditorViewModel.swift`](apps/SplitBill/SplitBill/UI/State/ReceiptEditorViewModel.swift)
+  - [`apps/SplitBill/SplitBillTests/ReceiptEditorViewModelParsingTests.swift`](apps/SplitBill/SplitBillTests/ReceiptEditorViewModelParsingTests.swift)
+
+### Task 3: Interfaz Interactiva de Revisión (`ReceiptParsedReviewSheet`) e Integración en el Espacio de Trabajo
+- **Concepts learned**:
+  - [x] **Diseño Visual de Diagnóstico de Reconciliación**: Semáforo visual en la tarjeta superior con iconos semánticos (`checkmark.seal.fill` verde para totales verificados, `exclamationmark.triangle.fill` ámbar para discrepancias con importe exacto, `info.circle.fill` azul para tickets sin línea de total), proporcionando certeza matemática inmediata.
+  - [x] **Flujo Rápido de Alta de Comensales Inline**: Detección del estado sin comensales (`viewModel.participants.isEmpty`) que presenta un banner interactivo inline con campo de texto y botón de adición directa, permitiendo al usuario registrar comensales sin necesidad de descartar la hoja de revisión ni perder su progreso de escaneo.
+  - [x] **Áreas Táctiles Accesibles y Control Granular (Apple HIG)**: Steppers de cantidad con dianas táctiles mínimas de 44x44 pt, campos de precio formateados con teclado `.decimalPad` y visualización de la línea fuente del OCR para máxima trazabilidad.
+  - [x] **Transiciones Suaves entre Hojas Modales en SwiftUI**: Desacoplar la presentación entre `ReceiptOCRTextSheet` y `ReceiptParsedReviewSheet` mediante un breve sleep asíncrono en `@MainActor` para permitir que UIKit complete la animación de descarte nativa antes de presentar la hoja de revisión, eliminando advertencias de presentación concurrente.
+- **Files implemented**:
+  - [`apps/SplitBill/SplitBill/UI/Views/ReceiptParsedReviewSheet.swift`](apps/SplitBill/SplitBill/UI/Views/ReceiptParsedReviewSheet.swift)
+  - [`apps/SplitBill/SplitBill/UI/Views/ReceiptImageSectionView.swift`](apps/SplitBill/SplitBill/UI/Views/ReceiptImageSectionView.swift)
+  - [`apps/SplitBill/SplitBill/UI/Views/ReceiptOCRTextSheet.swift`](apps/SplitBill/SplitBill/UI/Views/ReceiptOCRTextSheet.swift)
+  - [`apps/SplitBill/SplitBill/UI/State/ReceiptEditorViewModel.swift`](apps/SplitBill/SplitBill/UI/State/ReceiptEditorViewModel.swift)
+  - [`LEARNING_LOG.md`](LEARNING_LOG.md)
+
+
