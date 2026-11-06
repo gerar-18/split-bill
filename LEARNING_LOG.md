@@ -249,7 +249,7 @@ Status: Completed (3/3 tasks completed)
 
 ## M5 — OCR: Image to Text with Evaluation Fixtures
 
-Status: In Progress (2/3 tasks completed)
+Status: Completed (3/3 tasks completed)
 
 ### Task 1: Motor OCR con Vision y Reconstrucción Geométrica de Líneas
 - **Concepts learned**:
@@ -271,6 +271,16 @@ Status: In Progress (2/3 tasks completed)
   - [`apps/SplitBill/SplitBill/Infrastructure/Persistence/StoredReceipt.swift`](apps/SplitBill/SplitBill/Infrastructure/Persistence/StoredReceipt.swift)
   - [`apps/SplitBill/SplitBill/UI/State/ReceiptEditorViewModel.swift`](apps/SplitBill/SplitBill/UI/State/ReceiptEditorViewModel.swift)
   - [`apps/SplitBill/SplitBillTests/ReceiptOCREvaluationTests.swift`](apps/SplitBill/SplitBillTests/ReceiptOCREvaluationTests.swift)
+
+### Task 3: UI de Inspección OCR (`ReceiptOCRTextSheet`) e Integración en `ReceiptImageSectionView`
+- **Concepts learned**:
+  - [x] **Semántica Visual vs. Ruido en VoiceOver en Texto Monoespaciado**: Al renderizar un ticket escaneado con líneas numeradas en fuente monoespaciada (`.font(.system(.footnote, design: .monospaced))`), ocultar el número visual a VoiceOver (`accessibilityHidden(true)`) permite que el lector de pantalla lea fluidamente cada línea del ticket sin insertar dígitos huérfanos entre cada descripción.
+  - [x] **Flujo Asíncrono de Auto-Escaneo No Bloqueante en SwiftUI**: Disparar `Task { await viewModel.recognizeReceiptText() }` inmediatamente al adjuntar la imagen mientras `isProcessingPhoto` se libera en cuanto la imagen está en memoria permite que el usuario vea la foto al instante mientras el indicador de OCR corre en segundo plano.
+  - [x] **Confirmación Accesible Multimodal (`AccessibilityNotification.Announcement`)**: Al copiar al portapapeles, combinar la actualización visual temporal con `AccessibilityNotification.Announcement("Texto copiado al portapapeles").post()` ofrece retroalimentación inmediata tanto visual como auditiva para usuarios de tecnologías de asistencia.
+- **Files implemented**:
+  - [`apps/SplitBill/SplitBill/UI/Views/ReceiptOCRTextSheet.swift`](apps/SplitBill/SplitBill/UI/Views/ReceiptOCRTextSheet.swift)
+  - [`apps/SplitBill/SplitBill/UI/Views/ReceiptImageSectionView.swift`](apps/SplitBill/SplitBill/UI/Views/ReceiptImageSectionView.swift)
+
 
 
 

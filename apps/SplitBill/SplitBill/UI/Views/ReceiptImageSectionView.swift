@@ -11,6 +11,7 @@ struct ReceiptImageSectionView: View {
     @State private var isViewerPresented = false
     @State private var isCameraPresented = false
     @State private var isPhotoPickerPresented = false
+    @State private var isOCRSheetPresented = false
     @State private var selectedPhotoItem: PhotosPickerItem? = nil
     @State private var showDeleteConfirmation = false
     @State private var isProcessingPhoto = false
@@ -38,7 +39,11 @@ struct ReceiptImageSectionView: View {
         .sheet(isPresented: $isCameraPresented) {
             CameraCaptureView { capturedData in
                 viewModel.attachReceiptImageData(capturedData)
+                Task { await viewModel.recognizeReceiptText() }
             }
+        }
+        .sheet(isPresented: $isOCRSheetPresented) {
+            ReceiptOCRTextSheet(viewModel: viewModel)
         }
         .confirmationDialog(
             "¿Eliminar foto del recibo?",
@@ -140,6 +145,7 @@ struct ReceiptImageSectionView: View {
                     ForEach(SampleReceiptPreset.allCases) { preset in
                         Button(preset.displayName) {
                             viewModel.attachSampleReceipt(preset)
+                            Task { await viewModel.recognizeReceiptText() }
                         }
                     }
                 } label: {
@@ -214,6 +220,8 @@ struct ReceiptImageSectionView: View {
                     : "Foto adjunta del recibo. Toca para ver en pantalla completa con zoom."
             )
 
+            ocrInspectionRow
+
             HStack {
                 Button {
                     isViewerPresented = true
@@ -243,6 +251,70 @@ struct ReceiptImageSectionView: View {
     }
 
     @ViewBuilder
+    private var ocrInspectionRow: some View {
+        if viewModel.isRecognizingText {
+            HStack(spacing: 8) {
+                ProgressView()
+                    .controlSize(.small)
+                Text("Reconociendo texto del ticket...")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(minHeight: 44)
+            .padding(.vertical, 4)
+            .background(.background.tertiary, in: RoundedRectangle(cornerRadius: 8))
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Reconociendo texto del ticket con OCR en progreso")
+        } else if viewModel.hasOCRText {
+            Button {
+                isOCRSheetPresented = true
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "text.viewfinder")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Color.accentColor)
+
+                    Text("Ver texto del ticket (\(viewModel.ocrLineCount) líneas)")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.primary)
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 12)
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: 44)
+                .background(.background.tertiary, in: RoundedRectangle(cornerRadius: 8))
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Ver texto detectado del ticket, \(viewModel.ocrLineCount) líneas encontradas")
+            .accessibilityHint("Abre la hoja para inspeccionar y copiar el texto OCR")
+        } else {
+            Button {
+                Task {
+                    await viewModel.recognizeReceiptText()
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "text.viewfinder")
+                    Text("Extraer texto del ticket (OCR)")
+                }
+                .font(.subheadline.weight(.medium))
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.bordered)
+            .accessibilityLabel("Extraer texto del ticket con OCR")
+        }
+    }
+
+    @ViewBuilder
     private var replaceMenuContent: some View {
         if CameraCaptureView.isCameraAvailable {
             Button {
@@ -262,11 +334,21 @@ struct ReceiptImageSectionView: View {
             ForEach(SampleReceiptPreset.allCases) { preset in
                 Button(preset.displayName) {
                     viewModel.attachSampleReceipt(preset)
+                    Task { await viewModel.recognizeReceiptText() }
                 }
             }
         } label: {
             Label("Usar ticket de muestra", systemImage: "sparkles")
         }
+
+        Button {
+            Task {
+                await viewModel.recognizeReceiptText()
+            }
+        } label: {
+            Label("Volver a escanear ticket", systemImage: "arrow.clockwise")
+        }
+        .disabled(viewModel.isRecognizingText)
 
         Divider()
 
@@ -285,14 +367,17 @@ struct ReceiptImageSectionView: View {
             do {
                 if let rawData = try await item.loadTransferable(type: Data.self) {
                     viewModel.attachReceiptImageData(rawData)
+                    isProcessingPhoto = false
+                    await viewModel.recognizeReceiptText()
                 } else {
                     viewModel.validationMessage = "No se pudo obtener la imagen seleccionada."
+                    isProcessingPhoto = false
                 }
             } catch {
                 viewModel.validationMessage = "Error al cargar la foto seleccionada."
+                isProcessingPhoto = false
             }
             selectedPhotoItem = nil
-            isProcessingPhoto = false
         }
     }
 }
