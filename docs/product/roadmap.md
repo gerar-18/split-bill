@@ -11,7 +11,7 @@
 | **M4** | `v0.4.0` | Camera | Capture, normalize, and preview receipt image with zoom | ✅ Complete |
 | **M5** | `v0.5.0` | OCR | On-device Vision image-to-text with geometric line reconstruction | ✅ Complete |
 | **M6** | `v0.6.0` | Deterministic parsing | OCR text to validated structured receipt with human-in-the-loop review | ✅ Complete |
-| **M6.5** | `v1.0.0` | **App Store v1.0 Release (Local-First)** | `PrivacyInfo.xcprivacy`, 1024px `AppIcon`, iPhone-only target, Spanish localization metadata, in-app Privacy/Support sheet, and TestFlight/App Store submission | ⏳ Next |
+| **M6.5** | `v1.0.0` | **App Store v1.0 Release (Local-First)** | `PrivacyInfo.xcprivacy`, 1024px `AppIcon`, iPhone-only target, Spanish localization metadata, in-app Privacy/Support sheet, and TestFlight/App Store submission | ✅ Complete |
 
 ## Wave 2 — v2.0 Cloud Sync, Paid LLM & Collaboration
 

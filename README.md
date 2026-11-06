@@ -29,7 +29,7 @@ SplitBill is a learning-driven iOS application designed for scanning restaurant 
 | **M4** | `v0.4.0` | Camera | Capture and preview receipt image (Camera, PhotosPicker, Sample Receipts, Zoom) | ✅ Complete |
 | **M5** | `v0.5.0` | OCR | Image to text with evaluation fixtures (Apple Vision, geometric line reconstruction) | ✅ Complete |
 | **M6** | `v0.6.0` | Intelligent parsing | Deterministic receipt parser with real-time financial reconciliation & review sheet | ✅ Complete |
-| **M6.5** | `v1.0.0` | **App Store v1.0 Release** | `PrivacyInfo.xcprivacy`, 1024px `AppIcon`, iPhone-only, Spanish metadata, in-app Privacy & Support, TestFlight/App Store | ⏳ Next |
+| **M6.5** | `v1.0.0` | **App Store v1.0 Release** | `PrivacyInfo.xcprivacy`, 1024px `AppIcon`, iPhone-only, Spanish metadata, in-app Privacy & Support, TestFlight/App Store | ✅ Complete |
 
 ### Wave 2 — v2.0 Cloud Sync, Paid LLM & Collaboration
 
@@ -52,12 +52,14 @@ split-bill/
 │   │   ├── Domain/          # Pure business logic (Receipt, SplitEngine, Money, DeterministicReceiptParser)
 │   │   ├── Infrastructure/  # Persistence (SwiftData), OCR (Vision), Imaging (Processor, Samples)
 │   │   └── UI/              # Views (Workspace, Review, OCR, Zoom) & Observable State
-│   └── SplitBillTests/      # Swift Testing suites (110+ unit, evaluation & persistence tests)
+│   └── SplitBillTests/      # Swift Testing suites (124+ unit, evaluation & persistence tests)
 ├── docs/                    # Architecture (ADR), product roadmap, and quality strategy
 │   ├── architecture/        # System architecture specifications
 │   ├── decisions/           # Architecture Decision Records (ADR-001 to ADR-004)
 │   ├── domain/              # Money calculation and splitting rules
-│   └── product/             # Roadmap and Product Vision
+│   ├── legal/               # Privacy policy & Support pages (App Store compliance)
+│   ├── product/             # Roadmap and Product Vision
+│   └── release/             # App Store release runbooks & checklists
 ├── scripts/                 # Verification scripts (verify.sh)
 ├── services/                # Future backend services (M7)
 └── tests/fixtures/          # OCR datasets and evaluation fixtures
@@ -77,7 +79,7 @@ Every push, pull request to `main`, and version tag (`v*`) automatically runs `.
 1. **ADR-002 Architecture Boundary**: `apps/SplitBill/SplitBill/Domain/` contains zero occurrences of `import SwiftUI` and zero occurrences of `import SwiftData`.
 2. **Financial Invariants**: `Domain/` contains zero occurrences of `Float` or `Double`.
 3. **Swift 6 Compilation**: Zero warnings with deployment target iOS 18+.
-4. **Swift Testing**: All 110+ automated tests pass.
+4. **Swift Testing**: All 124+ automated tests pass.
 
 ---
 

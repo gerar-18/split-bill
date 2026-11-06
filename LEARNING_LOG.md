@@ -370,3 +370,31 @@ Status: Completed
 - [`.agents/skills/git-workflow/SKILL.md`](.agents/skills/git-workflow/SKILL.md)
 - [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
 - [`README.md`](README.md)
+
+---
+
+## M6.5 — App Store v1.0 Release Readiness (Local-First)
+
+Status: Completed (4/4 tasks completed)
+
+### Concepts learned:
+- [x] **App Privacy Manifest (`PrivacyInfo.xcprivacy`) en Xcode**: La inclusión del manifiesto oficial con `NSPrivacyTracking = false`, dominios vacíos y sin recopilación de datos fuera del dispositivo cumple con la Guideline 5.1.1(i) de Apple y permite que App Store Connect genere la etiqueta de privacidad estática ("Data Not Collected") sin advertencias de subida.
+- [x] **Declaración Automática de Exención de Cifrado (`ITSAppUsesNonExemptEncryption = NO`)**: Incluir la clave en el `Info.plist` generado vía Build Settings elimina el diálogo manual de cumplimiento de exportación de EE. UU. en cada build enviada a TestFlight y App Store.
+- [x] **Requisitos Físicos del Ícono Maestro de App Store (`AppIcon.png` 1024×1024 px)**: Apple prohíbe estrictamente canales alfa (transparencia) en el ícono de la tienda para que el sistema operativo aplique el recorte dinámico (*squircle*) sin artefactos visuales. Se validó con `sips -g hasAlpha` (`hasAlpha: no`) y se activó `ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon`.
+- [x] **Alineación de Plataforma e Idioma de Revisión (`developmentRegion = es`)**: Fijar `TARGETED_DEVICE_FAMILY = 1` restringe el lanzamiento a iPhone, eliminando la exigencia de capturas de iPad de 13" y revisiones de visión espacial en iPadOS/visionOS. Cambiar la región a español evita que la App Store clasifique erróneamente la app como disponible solo en inglés.
+- [x] **Transparencia Legal In-App y Desacoplamiento de Metadatos (`AppMetadata` & `AboutPrivacySheet`)**: Proporcionar acceso directo desde la interfaz a la versión y a URLs públicas sobre HTTPS con la Política de Privacidad y el Soporte técnico cumple con las Guidelines 1.5 y 5.1.1(i), sin almacenar credenciales ni depender de APIs de red externas.
+- [x] **Pruebas Automatizadas de Cumplimiento de Empaquetado (`AppBundleComplianceTests`)**: Uso de `Swift Testing` para verificar en tiempo de compilación y CI que el `PrivacyInfo.xcprivacy`, las claves de `Info.plist` y los enlaces legales se mantengan válidos e inmutables en futuras versiones.
+
+### Files modified / created:
+- [`apps/SplitBill/SplitBill.xcodeproj/project.pbxproj`](apps/SplitBill/SplitBill.xcodeproj/project.pbxproj)
+- [`apps/SplitBill/SplitBill/PrivacyInfo.xcprivacy`](apps/SplitBill/SplitBill/PrivacyInfo.xcprivacy)
+- [`apps/SplitBill/SplitBill/Assets.xcassets/AppIcon.appiconset/Contents.json`](apps/SplitBill/SplitBill/Assets.xcassets/AppIcon.appiconset/Contents.json)
+- [`apps/SplitBill/SplitBill/Assets.xcassets/AppIcon.appiconset/AppIcon.png`](apps/SplitBill/SplitBill/Assets.xcassets/AppIcon.appiconset/AppIcon.png)
+- [`apps/SplitBill/SplitBill/UI/State/AppMetadata.swift`](apps/SplitBill/SplitBill/UI/State/AppMetadata.swift)
+- [`apps/SplitBill/SplitBill/UI/Views/AboutPrivacySheet.swift`](apps/SplitBill/SplitBill/UI/Views/AboutPrivacySheet.swift)
+- [`apps/SplitBill/SplitBill/UI/Views/ReceiptWorkspaceView.swift`](apps/SplitBill/SplitBill/UI/Views/ReceiptWorkspaceView.swift)
+- [`apps/SplitBill/SplitBill/UI/Views/ReceiptImageSectionView.swift`](apps/SplitBill/SplitBill/UI/Views/ReceiptImageSectionView.swift)
+- [`apps/SplitBill/SplitBillTests/AppBundleComplianceTests.swift`](apps/SplitBill/SplitBillTests/AppBundleComplianceTests.swift)
+- [`docs/legal/privacy.md`](docs/legal/privacy.md)
+- [`docs/legal/support.md`](docs/legal/support.md)
+- [`docs/release/appstore-v1-checklist.md`](docs/release/appstore-v1-checklist.md)

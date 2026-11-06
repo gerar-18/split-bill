@@ -158,7 +158,7 @@ struct ReceiptImageSectionView: View {
                         .frame(minHeight: 44)
                 }
                 .buttonStyle(.bordered)
-                .accessibilityLabel("Cargar ticket de ejemplo para pruebas")
+                .accessibilityLabel("Probar con un recibo de ejemplo")
             }
             .disabled(isProcessingPhoto)
 

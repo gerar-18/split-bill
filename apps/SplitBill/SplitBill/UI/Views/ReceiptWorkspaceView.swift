@@ -8,6 +8,7 @@ struct ReceiptWorkspaceView: View {
 
     @Bindable var viewModel: ReceiptEditorViewModel
     @State private var isHistoryPresented = false
+    @State private var isAboutPresented = false
     @State private var showNewReceiptConfirmation = false
 
     // MARK: - Body
@@ -61,7 +62,7 @@ struct ReceiptWorkspaceView: View {
             }
             .navigationTitle("SplitBill")
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItemGroup(placement: .topBarLeading) {
                     Button {
                         isHistoryPresented = true
                     } label: {
@@ -70,6 +71,13 @@ struct ReceiptWorkspaceView: View {
                     .accessibilityLabel(
                         "Mis cuentas guardadas, \(viewModel.savedReceipts.count == 1 ? "1 disponible" : "\(viewModel.savedReceipts.count) disponibles")"
                     )
+
+                    Button {
+                        isAboutPresented = true
+                    } label: {
+                        Image(systemName: "info.circle")
+                    }
+                    .accessibilityLabel("Acerca de SplitBill y Privacidad")
                 }
 
                 ToolbarItemGroup(placement: .topBarTrailing) {
@@ -94,6 +102,9 @@ struct ReceiptWorkspaceView: View {
             }
             .sheet(isPresented: $isHistoryPresented) {
                 ReceiptHistorySheet(viewModel: viewModel)
+            }
+            .sheet(isPresented: $isAboutPresented) {
+                AboutPrivacySheet()
             }
             .confirmationDialog(
                 "¿Iniciar nueva cuenta?",
