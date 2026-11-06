@@ -1,8 +1,26 @@
+# macOS
 .DS_Store
+.AppleDouble
+.LSOverride
+
+# Xcode & Swift
 .build/
 DerivedData/
 *.xcuserstate
 xcuserdata/
+*.xcresult
+*.ipa
+*.dSYM.zip
+*.hmap
+
+# Secrets & Environment
 .env
 .env.*
 !.env.example
+
+# Future Backend (Wave 2)
+node_modules/
+dist/
+.postgres-data/
+npm-debug.log*
+yarn-debug.log*

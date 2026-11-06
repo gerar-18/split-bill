@@ -398,3 +398,24 @@ Status: Completed (4/4 tasks completed)
 - [`docs/legal/privacy.md`](docs/legal/privacy.md)
 - [`docs/legal/support.md`](docs/legal/support.md)
 - [`docs/release/appstore-v1-checklist.md`](docs/release/appstore-v1-checklist.md)
+
+---
+
+## M6.6 — Portfolio & Open-Source Showcase (v1.0.0)
+
+Status: Completed (4/4 tasks completed)
+
+### Concepts learned:
+- [x] **Construcción de un Repositorio Insignia de Portafolio**: Cómo estructurar un README ejecutivo que hable directamente a reclutadores y líderes de ingeniería en los primeros segundos: badges oficiales, capturas visuales de alta fidelidad, tabla de destacados de código (*deep-links* a `Domain/`, `Infrastructure/` y `UI/`) y demostración de principios arquitectónicos sólidos (`ADR-002`).
+- [x] **Sideloading Gratuito en Dispositivos Físicos con Personal Team de Xcode ($0 Costo)**: Comprender que la membresía anual del Apple Developer Program ($99 USD/año) solo es necesaria para publicar en la tienda o TestFlight público; cualquier desarrollador puede firmar localmente sus aplicaciones usando su Apple ID personal gratuito (*Personal Team*) e instalarlas vía USB/Wi-Fi en hasta 3 dispositivos personales sin costo alguno.
+- [x] **Documentación de Historial con Keep a Changelog y SemVer**: Adopción formal de `CHANGELOG.md` estructurado desde `v0.1.0` hasta `v1.0.0`, ofreciendo trazabilidad completa de cada hito y funcionalidad entregada.
+- [x] **Licenciamiento Open-Source (MIT)**: Inclusión de la licencia MIT permisiva para habilitar a la comunidad y evaluadores técnicos a inspeccionar, clonar y aprender del código fuente libremente.
+
+### Files modified / created:
+- [`LICENSE`](LICENSE)
+- [`CHANGELOG.md`](CHANGELOG.md)
+- [`.gitignore`](.gitignore)
+- [`README.md`](README.md)
+- [`docs/assets/app-icon-preview.png`](docs/assets/app-icon-preview.png)
+- [`docs/assets/01-workspace.png`](docs/assets/01-workspace.png)
+- [`docs/product/roadmap.md`](docs/product/roadmap.md)

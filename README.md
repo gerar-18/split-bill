@@ -1,88 +1,174 @@
-# SplitBill
+<p align="center">
+  <img src="docs/assets/app-icon-preview.png" width="100" height="100" alt="SplitBill App Icon" style="border-radius: 22px;">
+</p>
 
-[![CI Pipeline](https://github.com/gerar-18/split-bill/actions/workflows/ci.yml/badge.svg)](https://github.com/gerar-18/split-bill/actions/workflows/ci.yml)
+<h1 align="center">SplitBill</h1>
 
-SplitBill is a learning-driven iOS application designed for scanning restaurant receipts, assigning items among participants with multiple split modes, and calculating exact per-person totals using integer-based financial mathematics.
+<p align="center">
+  <b>Modern, Local-First Restaurant Bill Splitting for iOS 18+</b><br>
+  Built with Swift 6 Strict Concurrency, Pure Domain Separation, On-Device Vision OCR, and Exact Minor-Unit Financial Mathematics.
+</p>
 
----
-
-## 🎯 Project Goals
-
-- **Modern iOS Architecture**: Pure Domain separation ([ADR-002](docs/decisions/ADR-002-domain-separation.md)), Swift 6 strict concurrency (`@MainActor`, `Sendable`), and reactive state using the Observation framework (`@Observable`).
-- **Financial Precision**: Zero binary floating-point types (`Float`/`Double`) for money. All calculations use exact integer minor units (`Int64` cents/centavos) with the Hamilton largest-remainder method for deterministic penny allocation.
-- **Local-First & Resilient ([ADR-001](docs/decisions/ADR-001-local-first.md))**: Full offline functionality with automated SwiftData persistence surviving app restarts.
-- **App Store Release Strategy ([ADR-004](docs/decisions/ADR-004-appstore-release-strategy.md))**: Two-wave shipping model (v1.0 Local-First followed by v2.0 Cloud, AI Pro & Collaboration) adhering strictly to Apple Review Guidelines.
-- **Production Quality**: Rigorous automated testing via `Swift Testing` (`@Test`, `#expect`), accessible Apple HIG design (VoiceOver, Dynamic Type), and continuous integration with GitHub Actions.
-
----
-
-## 🗺️ Milestone Progress
-
-### Wave 1 — v1.0 Local-First App Store Release
-
-| Milestone | Target Version | Goal | Exit Criterion | Status |
-|---|---|---|---|:---:|
-| **M0** | `v0.0.1` | Engineering foundation | Repository, agent workflow, tests, documentation, CI-ready pipeline | ✅ Complete |
-| **M1** | `v0.1.0` | Split engine | Deterministic business logic with comprehensive tests (Hamilton split math) | ✅ Complete |
-| **M2** | `v0.2.0` | iOS UI | Complete manual split flow (4 split modes, tip presets, VoiceOver, ShareLink) | ✅ Complete |
-| **M3** | `v0.3.0` | Persistence | Receipts survive app restarts (SwiftData, multi-receipt history, auto-save) | ✅ Complete |
-| **M4** | `v0.4.0` | Camera | Capture and preview receipt image (Camera, PhotosPicker, Sample Receipts, Zoom) | ✅ Complete |
-| **M5** | `v0.5.0` | OCR | Image to text with evaluation fixtures (Apple Vision, geometric line reconstruction) | ✅ Complete |
-| **M6** | `v0.6.0` | Intelligent parsing | Deterministic receipt parser with real-time financial reconciliation & review sheet | ✅ Complete |
-| **M6.5** | `v1.0.0` | **App Store v1.0 Release** | `PrivacyInfo.xcprivacy`, 1024px `AppIcon`, iPhone-only, Spanish metadata, in-app Privacy & Support, TestFlight/App Store | ✅ Complete |
-
-### Wave 2 — v2.0 Cloud Sync, Paid LLM & Collaboration
-
-| Milestone | Target Version | Goal | Exit Criterion | Status |
-|---|---|---|---|:---:|
-| **M7** | `v1.1.0` | Backend & Identity | NestJS + PostgreSQL cloud sync, optional *Sign in with Apple* (4.8), in-app account deletion (5.1.1(v)), backend LLM proxy | 📋 Planned |
-| **M7.5** | `v1.2.0` | **AI Extraction & Monetization** | User AI consent modal (5.1.2(i)), `StoreKit 2` subscriptions/paywall (3.1.1/3.1.2), Restore Purchases, LLM parsing ([ADR-003](docs/decisions/ADR-003-ai-after-deterministic-parser.md)) | 📋 Planned |
-| **M8** | `v1.3.0` | Collaboration | Shared receipt workflow via QR / Universal Links without forced guest login, UGC report/hide controls (1.2) | 📋 Planned |
-| **M9** | `v2.0.0` | Production v2.0 | TestFlight, live backend SLA, App Review demo credentials (2.1), `MetricKit` crash/performance observability | 📋 Planned |
+<p align="center">
+  <a href="https://github.com/gerar-18/split-bill/actions/workflows/ci.yml">
+    <img src="https://github.com/gerar-18/split-bill/actions/workflows/ci.yml/badge.svg" alt="CI Pipeline">
+  </a>
+  <img src="https://img.shields.io/badge/Swift-6.0-F05138?logo=swift&logoColor=white" alt="Swift 6">
+  <img src="https://img.shields.io/badge/iOS-18.0%2B-000000?logo=apple&logoColor=white" alt="iOS 18+">
+  <img src="https://img.shields.io/badge/Tests-124%20Passing-34D399?logo=checkmarx&logoColor=white" alt="Tests">
+  <img src="https://img.shields.io/badge/Architecture-Clean%20%2F%20ADR--002-3B82F6" alt="Architecture">
+  <img src="https://img.shields.io/badge/Dependencies-0%20(Pure%20Apple%20SDK)-8B5CF6" alt="0 Dependencies">
+  <a href="LICENSE">
+    <img src="https://img.shields.io/badge/License-MIT-F59E0B.svg" alt="License MIT">
+  </a>
+</p>
 
 ---
 
-## 🏗️ Repository Structure
+## 📱 Visual Overview
+
+<p align="center">
+  <img src="docs/assets/01-workspace.png" width="340" alt="SplitBill Workspace on iOS 18" style="border-radius: 16px; box-shadow: 0 8px 30px rgba(0,0,0,0.12);">
+</p>
+
+<p align="center">
+  <b>Scan</b> receipt ticket &nbsp;→&nbsp; 
+  <b>Review</b> items & amounts &nbsp;→&nbsp; 
+  <b>Assign</b> participants &nbsp;→&nbsp; 
+  <b>Split</b> with penny precision &nbsp;→&nbsp; 
+  <b>Share</b> summary
+</p>
+
+---
+
+## 💡 What Makes SplitBill Different?
+
+Most bill-splitting apps rely on binary floating-point (`Double` / `Float`) that introduce fractional penny rounding errors, require forced accounts before showing any value, or send private user receipts to third-party servers.
+
+**SplitBill** is engineered from first principles as an **offline-first, zero-operating-cost, privacy-guaranteed mobile application**:
+- **Zero Floating-Point Representation**: All monetary values use exact integer minor units (`Int64` cents/centavos) with the **Hamilton largest-remainder method** for deterministic odd-cent allocation.
+- **On-Device Computer Vision**: Apple's native `Vision` framework performs optical character recognition locally on the Apple Neural Engine, paired with a custom geometric row-clustering algorithm.
+- **Strict Domain Boundary ([ADR-002](docs/decisions/ADR-002-domain-separation.md))**: The business logic is 100% independent of SwiftUI and SwiftData, preventing UI framework churn from compromising core calculations.
+- **Swift 6 Strict Concurrency**: Fully annotated with `@MainActor`, value types, immutable structures, and actor reentrancy guards.
+- **Zero External Third-Party SDKs**: 100% pure native Apple frameworks (SwiftUI, Observation, SwiftData, Vision, PhotosUI, Swift Testing).
+
+---
+
+## 🏛️ Engineering Highlights (Direct Code Links)
+
+| Feature / Pattern | Key Files & Architectural Concept |
+|---|---|
+| **Exact Penny Math & Hamilton Allocation** | [`Money.swift`](apps/SplitBill/SplitBill/Domain/Money.swift) & [`SplitEngine.swift`](apps/SplitBill/SplitBill/Domain/SplitEngine.swift)<br>Enforces Master Conservation: $\sum \text{allocated} \equiv \text{receipt total}$. Odd tax/tip cents are deterministically awarded by descending remainder ranking. |
+| **On-Device OCR & Geometric Row Clustering** | [`ReceiptOCRService.swift`](apps/SplitBill/SplitBill/Infrastructure/OCR/ReceiptOCRService.swift) & [`ReceiptOCRModels.swift`](apps/SplitBill/SplitBill/Infrastructure/OCR/ReceiptOCRModels.swift)<br>Transforms normalized Vision bounding boxes (`midY`, `minX`) into logical receipt rows while offloading heavy vision requests from the cooperative thread pool. |
+| **Deterministic Parser & Reconciliation** | [`DeterministicReceiptParser.swift`](apps/SplitBill/SplitBill/Domain/DeterministicReceiptParser.swift) & [`ParsedReceiptReviewDraft.swift`](apps/SplitBill/SplitBill/UI/State/ParsedReceiptReviewDraft.swift)<br>Parses items, unit prices, IVA and tips with regex lookbehind; reconciles $\sum \text{items} + \text{tax} == \text{total}$ in real-time before import. |
+| **Resilient Persistence with Fallback** | [`ReceiptStore.swift`](apps/SplitBill/SplitBill/Infrastructure/Persistence/ReceiptStore.swift) & [`StoredReceipt.swift`](apps/SplitBill/SplitBill/Infrastructure/Persistence/StoredReceipt.swift)<br>Automated SwiftData store with graceful in-memory container fallback preventing launch crashes if disk storage fails. |
+| **Concurrency & Actor Reentrancy Guards** | [`ReceiptEditorViewModel.swift`](apps/SplitBill/SplitBill/UI/State/ReceiptEditorViewModel.swift)<br>Captures active receipt snapshot tokens to prevent out-of-order OCR completion from overwriting newly opened sessions. |
+| **App Store Compliance & Privacy Manifest** | [`PrivacyInfo.xcprivacy`](apps/SplitBill/SplitBill/PrivacyInfo.xcprivacy) & [`AboutPrivacySheet.swift`](apps/SplitBill/SplitBill/UI/Views/AboutPrivacySheet.swift)<br>Official Apple Privacy Manifest declaring zero tracking, plus in-app privacy disclosures meeting Guidelines 1.5 & 5.1.1(i). |
+
+---
+
+## 🏗️ Architecture
+
+SplitBill enforces a unidirectional Clean Architecture layout:
 
 ```text
-split-bill/
-├── .github/workflows/       # GitHub Actions CI pipeline (verify on push & tags)
-├── apps/SplitBill/          # Native iOS Application
-│   ├── SplitBill/
-│   │   ├── Domain/          # Pure business logic (Receipt, SplitEngine, Money, DeterministicReceiptParser)
-│   │   ├── Infrastructure/  # Persistence (SwiftData), OCR (Vision), Imaging (Processor, Samples)
-│   │   └── UI/              # Views (Workspace, Review, OCR, Zoom) & Observable State
-│   └── SplitBillTests/      # Swift Testing suites (124+ unit, evaluation & persistence tests)
-├── docs/                    # Architecture (ADR), product roadmap, and quality strategy
-│   ├── architecture/        # System architecture specifications
-│   ├── decisions/           # Architecture Decision Records (ADR-001 to ADR-004)
-│   ├── domain/              # Money calculation and splitting rules
-│   ├── legal/               # Privacy policy & Support pages (App Store compliance)
-│   ├── product/             # Roadmap and Product Vision
-│   └── release/             # App Store release runbooks & checklists
-├── scripts/                 # Verification scripts (verify.sh)
-├── services/                # Future backend services (M7)
-└── tests/fixtures/          # OCR datasets and evaluation fixtures
+SwiftUI Views (ReceiptWorkspaceView, ReceiptParsedReviewSheet, etc.)
+  ↓ (Observation Framework: @Observable)
+Presentation State (ReceiptEditorViewModel)
+  ↓ (Pure Models & Ports: zero UI / DB dependencies)
+Domain Layer (Pure Swift)
+  ├── Money (Minor-unit Int64 cents)
+  ├── Receipt, ReceiptItem, Participant, Assignment
+  ├── SplitEngine (Hamilton largest-remainder calculation)
+  └── DeterministicReceiptParser (Regex & position heuristics)
+  ↓ (Inversion of Control)
+Infrastructure Layer
+  ├── Persistence: SwiftDataReceiptStore & StoredReceipt
+  ├── Imaging: ReceiptImageProcessor & SampleReceiptImageGenerator
+  └── Vision OCR: ReceiptOCRService (Apple Vision text recognition)
 ```
+
+Architectural decisions are tracked in formal **Architecture Decision Records (ADRs)**:
+- [ADR-001 — Local-First Initial Architecture](docs/decisions/ADR-001-local-first.md)
+- [ADR-002 — Keep Domain Logic Independent from UI](docs/decisions/ADR-002-domain-separation.md)
+- [ADR-003 — Introduce LLM Parsing After Deterministic Baseline](docs/decisions/ADR-003-ai-after-deterministic-parser.md)
+- [ADR-004 — Two-Wave Release Strategy & App Store Guardrails](docs/decisions/ADR-004-appstore-release-strategy.md)
 
 ---
 
-## 🧪 Verification & Continuous Integration
+## 🗺️ Roadmap & Next Steps ($0 Cost)
 
-To run the complete verification suite locally (architecture boundary validation, build check, and Swift Testing):
+### Wave 1 — v1.0 Local-First (Complete)
+
+| Milestone | Target | Focus | Status |
+|---|---|---|:---:|
+| **M0** | `v0.0.1` | Engineering foundation, CI pipeline, and agent constitution | ✅ Complete |
+| **M1** | `v0.1.0` | Exact financial split engine (Hamilton method) | ✅ Complete |
+| **M2** | `v0.2.0` | Reactive SwiftUI UI (4 split modes, VoiceOver, Dynamic Type) | ✅ Complete |
+| **M3** | `v0.3.0` | SwiftData persistence surviving app restarts | ✅ Complete |
+| **M4** | `v0.4.0` | Camera capture, photo picker, and pinch-to-zoom viewer | ✅ Complete |
+| **M5** | `v0.5.0` | On-device Vision OCR with geometric line reconstruction | ✅ Complete |
+| **M6** | `v0.6.0` | Deterministic parsing with real-time financial reconciliation | ✅ Complete |
+| **M6.5** | `v1.0.0` | App Store readiness (`PrivacyInfo.xcprivacy`, 1024px icon, bundle tests) | ✅ Complete |
+| **M6.6** | `v1.0.0` | Portfolio showcase, MIT license, visual assets, and free sideloading guide | ✅ Complete |
+
+### Wave 2 — Extensions at $0 Cost & Future Cloud
+
+| Milestone | Target | Focus | Status |
+|---|---|---|:---:|
+| **M6.7** | `v1.1.0` | **Visual Receipt Card Exporter (`ImageRenderer`)** — Render a shareable image/card breakdown for WhatsApp / iMessage | ⏳ Next |
+| **M7** | `v1.2.0` | **Local Cloud Backend (Docker Compose)** — NestJS + PostgreSQL running locally at $0 cost for multi-device sync | 📋 Planned |
+| **M7.5** | `v1.3.0` | **AI Extraction Proxy** — LLM parser proxy via backend with explicit user consent modal | 📋 Planned |
+| **M8** | `v1.4.0` | **Shared Receipt Collaboration** — Real-time sessions via QR / Universal Links | 📋 Planned |
+| **M9** | `v2.0.0` | **Commercial App Store Release** — Production deployment with TestFlight & StoreKit 2 subscriptions | 📋 Planned |
+
+---
+
+## 🧪 Testing & Verification
+
+The project includes **124 automated tests** across 16 test suites written in Apple's modern **Swift Testing** framework (`@Test`, `#expect`, parameterized arguments):
+
+To run the complete verification suite locally (architecture boundary checks, build check, and test suite):
 
 ```bash
 ./scripts/verify.sh
 ```
 
-Every push, pull request to `main`, and version tag (`v*`) automatically runs `./scripts/verify.sh` on macOS runners via GitHub Actions, verifying:
-1. **ADR-002 Architecture Boundary**: `apps/SplitBill/SplitBill/Domain/` contains zero occurrences of `import SwiftUI` and zero occurrences of `import SwiftData`.
-2. **Financial Invariants**: `Domain/` contains zero occurrences of `Float` or `Double`.
-3. **Swift 6 Compilation**: Zero warnings with deployment target iOS 18+.
-4. **Swift Testing**: All 124+ automated tests pass.
+Every push and tag automatically runs `./scripts/verify.sh` on macOS runners via GitHub Actions, verifying:
+1. **ADR-002 Boundary Gate**: `Domain/` contains zero occurrences of `import SwiftUI` and zero occurrences of `import SwiftData`.
+2. **Financial Invariant Gate**: `Domain/` contains zero occurrences of `Float` or `Double`.
+3. **Compilation Gate**: Compiles cleanly with Swift 6 strict concurrency for iOS 18+.
+4. **Swift Testing Gate**: 100% of the 124 tests pass.
 
 ---
 
-## 📜 Development Principles
+## 🚀 Running SplitBill Locally
 
-AI agents accelerate implementation; they do not replace engineering judgment. Every completed feature must satisfy its acceptance criteria, have appropriate automated tests, pass `./scripts/verify.sh`, and remain fully understandable by the project owner. Architectural decisions are documented in [`docs/decisions/`](docs/decisions/) and learning milestones in [`LEARNING_LOG.md`](LEARNING_LOG.md).
+### In the Simulator (macOS + Xcode 16+)
+1. Clone this repository:
+   ```bash
+   git clone https://github.com/gerar-18/split-bill.git
+   cd split-bill
+   ```
+2. Open the project in Xcode:
+   ```bash
+   open apps/SplitBill/SplitBill.xcodeproj
+   ```
+3. Select any iPhone simulator (e.g., iPhone 16 or iPhone 17) and press **Run (`⌘R`)**.
+
+### On Your Physical iPhone for FREE ($0 Cost)
+You do not need a paid $99/year Apple Developer account to run SplitBill on your personal iPhone:
+1. Open `apps/SplitBill/SplitBill.xcodeproj` in Xcode.
+2. In **Xcode → Settings → Accounts**, click **`+`** and sign in with your free personal Apple ID.
+3. Select the **`SplitBill`** target → **Signing & Capabilities** tab.
+4. Check **Automatically manage signing** and select your **Personal Team**.
+5. Connect your iPhone via USB cable or Wi-Fi, select it in the scheme bar, and press **Run (`⌘R`)**.
+6. On your iPhone, navigate to **Settings → General → VPN & Device Management**, tap your Apple ID, and select **Trust**.
+
+---
+
+## 📄 License & Author
+
+Distributed under the **MIT License**. See [`LICENSE`](LICENSE) for details.
+
+Developed with passion by **Gerardo** ([@gerar-18](https://github.com/gerar-18)).
