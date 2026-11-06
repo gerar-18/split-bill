@@ -245,6 +245,23 @@ Status: Completed (3/3 tasks completed)
 - **Files implemented**:
   - [`apps/SplitBill/SplitBill/UI/Views/ReceiptImageSectionView.swift`](apps/SplitBill/SplitBill/UI/Views/ReceiptImageSectionView.swift)
 
+---
+
+## M5 — OCR: Image to Text with Evaluation Fixtures
+
+Status: In Progress (1/3 tasks completed)
+
+### Task 1: Motor OCR con Vision y Reconstrucción Geométrica de Líneas
+- **Concepts learned**:
+  - [x] **Sistema de Coordenadas de Vision vs. UIKit/SwiftUI**: A diferencia de UIKit/SwiftUI (origen superior-izquierdo, $Y$ hacia abajo), el framework `Vision` de Apple sitúa el origen `(0, 0)` en la esquina **inferior izquierda** ($Y$ crece hacia arriba de `0.0` a `1.0`). Ordenar las observaciones por `midY` **descendente** es la clave matemática para ordenar las líneas de un ticket de arriba hacia abajo (orden de lectura natural).
+  - [x] **Reconstrucción Espacial de Filas (*Row Clustering*)**: En recibos sin bordes, `VNRecognizeTextRequest` detecta el concepto a la izquierda (`"2x Tacos al Pastor"`) y el importe a la derecha (`"$170.00"`) como cajas independientes. Agruparlas considerando la proximidad vertical relativa a la altura de línea y ordenarlas horizontalmente por `minX` ascendente reconstruye líneas lógicas completas listas para el parsing de M6.
+  - [x] **Concurrencia, Typed Throws y Rendimiento en Swift 6**: Ejecutar `VNImageRequestHandler` en segundo plano mediante `Task.detached` y mapear a `throws(ReceiptOCRError)` garantiza seguridad de tipos y fluidez de la interfaz. Evitar recomprimir a JPEG cuando ya se tiene un `CGImage` en memoria elimina artefactos y reduce la latencia de OCR a solo ~1.3 segundos.
+- **Files implemented**:
+  - [`apps/SplitBill/SplitBill/Infrastructure/OCR/ReceiptOCRModels.swift`](apps/SplitBill/SplitBill/Infrastructure/OCR/ReceiptOCRModels.swift)
+  - [`apps/SplitBill/SplitBill/Infrastructure/OCR/ReceiptOCRService.swift`](apps/SplitBill/SplitBill/Infrastructure/OCR/ReceiptOCRService.swift)
+  - [`apps/SplitBill/SplitBillTests/ReceiptOCRTests.swift`](apps/SplitBill/SplitBillTests/ReceiptOCRTests.swift)
+
+
 
 
 
