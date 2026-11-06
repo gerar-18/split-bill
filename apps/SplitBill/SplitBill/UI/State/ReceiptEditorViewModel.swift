@@ -24,11 +24,16 @@ final class ReceiptEditorViewModel {
     private var isRestoringSession: Bool = false
     private let store: (any ReceiptPersistenceStore)?
     private let ocrService: any ReceiptOCRService
+    private let receiptParser: any ReceiptParser
 
     // MARK: - State Properties
 
     var currency: Currency = .mxn {
-        didSet { persistCurrentSession() }
+        didSet {
+            parsedCandidate = nil
+            parsedReviewDraft = nil
+            persistCurrentSession()
+        }
     }
     var participants: [Participant] = []
     var newParticipantName: String = ""
@@ -49,6 +54,13 @@ final class ReceiptEditorViewModel {
     private(set) var lastOCRResult: ReceiptOCRResult? = nil
     private(set) var isRecognizingText: Bool = false
 
+    // MARK: - Parsing & Intelligent Review State
+
+    private(set) var parsedCandidate: ParsedReceiptCandidate? = nil
+    var parsedReviewDraft: ParsedReceiptReviewDraft? = nil
+    var isShowingParsedReviewSheet: Bool = false
+    var importValidationErrorMessage: String? = nil
+
     /// Indicates whether recognized OCR text is present and non-empty.
     var hasOCRText: Bool {
         !(ocrRawText?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
@@ -67,11 +79,13 @@ final class ReceiptEditorViewModel {
     init(
         currency: Currency = .mxn,
         store: (any ReceiptPersistenceStore)? = nil,
-        ocrService: any ReceiptOCRService = VisionReceiptOCRService()
+        ocrService: any ReceiptOCRService = VisionReceiptOCRService(),
+        receiptParser: any ReceiptParser = DeterministicReceiptParser()
     ) {
         self.currency = currency
         self.store = store
         self.ocrService = ocrService
+        self.receiptParser = receiptParser
         self.receiptID = UUID()
         self.receiptCreatedAt = Date()
         loadInitialSession()
@@ -198,9 +212,7 @@ final class ReceiptEditorViewModel {
 
     // MARK: - OCR Actions
 
-    /// Triggers optical character recognition on the attached receipt image.
-    /// Uses an actor reentrancy guard to safely ignore stale results if the user switched
-    /// receipts or changed the image while recognition was running.
+    /// Triggers optical character recognition on the attached receipt image and automatically parses candidates.
     func recognizeReceiptText() async {
         guard !isRecognizingText, let data = receiptImageData else { return }
         let activeReceiptID = receiptID
@@ -212,6 +224,7 @@ final class ReceiptEditorViewModel {
             guard receiptID == activeReceiptID, receiptImageData == data else { return }
             lastOCRResult = result
             ocrRawText = result.rawText
+            parsedCandidate = receiptParser.parse(lines: result.lines.map(\.text), currency: currency)
             persistCurrentSession()
         } catch {
             guard receiptID == activeReceiptID, receiptImageData == data else { return }
@@ -225,6 +238,118 @@ final class ReceiptEditorViewModel {
         if let firstLine = lastOCRResult?.lines.first?.text ?? ocrRawText?.components(separatedBy: .newlines).first(where: { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }) {
             receiptTitle = firstLine.trimmingCharacters(in: .whitespacesAndNewlines)
         }
+    }
+
+    // MARK: - Parsed Receipt Review & Import Actions
+
+    /// Prepares the interactive review draft from `parsedCandidate` (or OCR text) and opens the review sheet.
+    func prepareParsedReceiptReview() {
+        if parsedCandidate == nil {
+            if let lines = lastOCRResult?.lines.map(\.text), !lines.isEmpty {
+                parsedCandidate = receiptParser.parse(lines: lines, currency: currency)
+            } else if let raw = ocrRawText, !raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                parsedCandidate = receiptParser.parse(rawText: raw, currency: currency)
+            }
+        }
+
+        guard let candidate = parsedCandidate else { return }
+        parsedReviewDraft = ParsedReceiptReviewDraft(from: candidate)
+        importValidationErrorMessage = nil
+        isShowingParsedReviewSheet = true
+    }
+
+    /// Dismisses the review sheet and discards the unconfirmed draft.
+    func dismissParsedReceiptReview() {
+        isShowingParsedReviewSheet = false
+        parsedReviewDraft = nil
+        importValidationErrorMessage = nil
+    }
+
+    /// Validates and imports the confirmed items and amounts from the active review draft into the live receipt.
+    ///
+    /// - Parameter replaceExistingItems: If `true`, replaces existing items; otherwise appends to them.
+    /// - Returns: `true` if import succeeded, `false` if validation failed.
+    @discardableResult
+    func confirmParsedReceiptImport(replaceExistingItems: Bool) -> Bool {
+        guard let draft = parsedReviewDraft else { return false }
+
+        // Invariant gate: at least one participant is required before assigning items.
+        guard !participants.isEmpty else {
+            importValidationErrorMessage = "Agrega al menos un comensal antes de importar los artículos del recibo."
+            return false
+        }
+
+        let includedItems = draft.items.filter(\.isIncluded)
+        guard !includedItems.isEmpty else {
+            importValidationErrorMessage = "No hay artículos seleccionados para importar."
+            return false
+        }
+
+        // Validate each item has valid non-empty name and positive price
+        let allParticipantIDs = Set(participants.map(\.id))
+        var importedItems: [ReceiptItem] = []
+
+        for itemDraft in includedItems {
+            let trimmedName = itemDraft.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmedName.isEmpty else {
+                importValidationErrorMessage = "Todos los artículos seleccionados deben tener un nombre válido."
+                return false
+            }
+
+            guard let unitPrice = itemDraft.parsedUnitPrice(currency: currency), unitPrice.amountInMinorUnits > 0 else {
+                importValidationErrorMessage = "El artículo \"\(trimmedName)\" tiene un precio unitario inválido o de $0.00."
+                return false
+            }
+
+            guard itemDraft.quantity >= 1 else {
+                importValidationErrorMessage = "La cantidad del artículo \"\(trimmedName)\" debe ser al menos 1."
+                return false
+            }
+
+            do {
+                let receiptItem = try ReceiptItem(
+                    name: trimmedName,
+                    unitPrice: unitPrice,
+                    quantity: itemDraft.quantity,
+                    splitMode: .equal(allParticipantIDs)
+                )
+                importedItems.append(receiptItem)
+            } catch {
+                importValidationErrorMessage = errorDescription(for: error)
+                return false
+            }
+        }
+
+        // Update items
+        if replaceExistingItems {
+            items = importedItems
+        } else {
+            items.append(contentsOf: importedItems)
+        }
+
+        // Suggested merchant title
+        let trimmedMerchant = draft.merchantName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if receiptTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !trimmedMerchant.isEmpty {
+            receiptTitle = trimmedMerchant
+        }
+
+        // Detected tax
+        if draft.includeDetectedTax, let tax = draft.resolvedTax {
+            taxText = MoneyFormatter.decimalString(from: tax)
+        }
+
+        // Detected tip
+        if draft.includeDetectedTip, let tip = draft.resolvedTip {
+            tipSelection = .custom
+            customTipText = MoneyFormatter.decimalString(from: tip)
+        }
+
+        // Clean up sheet state and persist
+        isShowingParsedReviewSheet = false
+        parsedReviewDraft = nil
+        importValidationErrorMessage = nil
+        persistCurrentSession()
+        return true
     }
 
     // MARK: - Participant Actions
@@ -326,7 +451,6 @@ final class ReceiptEditorViewModel {
     // MARK: - Receipt Image Actions
 
     /// Processes and attaches receipt image data (normalizing orientation and downscaling).
-    /// If image processing fails, exposes an informative validation message and preserves the previous image.
     func attachReceiptImageData(_ rawData: Data) {
         guard let processed = ReceiptImageProcessor.process(data: rawData) else {
             validationMessage = "No se pudo procesar la imagen seleccionada."
@@ -334,6 +458,9 @@ final class ReceiptEditorViewModel {
         }
         ocrRawText = nil
         lastOCRResult = nil
+        parsedCandidate = nil
+        parsedReviewDraft = nil
+        isShowingParsedReviewSheet = false
         receiptImageData = processed
         validationMessage = nil
     }
@@ -342,6 +469,9 @@ final class ReceiptEditorViewModel {
     func attachSampleReceipt(_ preset: SampleReceiptPreset) {
         ocrRawText = nil
         lastOCRResult = nil
+        parsedCandidate = nil
+        parsedReviewDraft = nil
+        isShowingParsedReviewSheet = false
         receiptImageData = SampleReceiptImageGenerator.generateImageData(for: preset)
         validationMessage = nil
     }
@@ -350,6 +480,9 @@ final class ReceiptEditorViewModel {
     func removeReceiptImage() {
         ocrRawText = nil
         lastOCRResult = nil
+        parsedCandidate = nil
+        parsedReviewDraft = nil
+        isShowingParsedReviewSheet = false
         receiptImageData = nil
         validationMessage = nil
     }
@@ -392,6 +525,10 @@ final class ReceiptEditorViewModel {
         ocrRawText = snapshot.ocrRawText
         lastOCRResult = nil
         isRecognizingText = false
+        parsedCandidate = nil
+        parsedReviewDraft = nil
+        isShowingParsedReviewSheet = false
+        importValidationErrorMessage = nil
         taxText = snapshot.tax.amountInMinorUnits > 0 ? MoneyFormatter.decimalString(from: snapshot.tax) : ""
         tipSelection = snapshot.tipSelection
         if let customUnits = snapshot.customTipMinorUnits, customUnits > 0 {
@@ -458,6 +595,10 @@ final class ReceiptEditorViewModel {
         ocrRawText = nil
         lastOCRResult = nil
         isRecognizingText = false
+        parsedCandidate = nil
+        parsedReviewDraft = nil
+        isShowingParsedReviewSheet = false
+        importValidationErrorMessage = nil
         newParticipantName = ""
         taxText = ""
         tipSelection = .percentage(10)
