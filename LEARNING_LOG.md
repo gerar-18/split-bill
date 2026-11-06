@@ -344,3 +344,29 @@ Status: Completed (3/3 tasks completed)
   - [`LEARNING_LOG.md`](LEARNING_LOG.md)
 
 
+
+---
+
+## Roadmap & Architecture — Estrategia de Lanzamiento a App Store en 2 Olas (ADR-004) y Versionado Semántico
+
+Status: Completed
+
+### Concepts learned:
+- [x] **Estrategia de Lanzamiento en Dos Olas (`v1.0 Local-First` vs. `v2.0 Cloud/Pro`)**: Publicar una versión inicial `Local-First` (nuevo hito `M6.5`) permite validar el ciclo completo en App Store Connect, TestFlight, firma y distribución con usuarios reales a $0 de costo de infraestructura y sin dependencias de red, antes de construir el backend en `M7`.
+- [x] **Auditoría Preventiva de App Review Guidelines**: Identificación de puntos críticos de rechazo antes de escribir código:
+  - **Packaging e Ícono (Guidelines 2.1 / 2.3.8 / 2.3.10)**: Evitar discrepancias de plataforma (`TARGETED_DEVICE_FAMILY = "1"` para iPhone en `v1.0`), incluir ícono 1024×1024 sin transparencia y alinear `developmentRegion = es`.
+  - **Privacidad (Guideline 5.1.1(i))**: Requisito mandatorio de Privacy Manifest (`PrivacyInfo.xcprivacy`) y URL de Política de Privacidad y Soporte accesible tanto en la tienda como dentro de la aplicación.
+  - **In-App Purchase (Guidelines 3.1.1 / 3.1.2)**: Funciones digitales avanzadas como extracción con LLM deben utilizar `StoreKit 2` con botón de restauración (`AppStore.sync()`) y enlaces legales.
+  - **Privacidad en IA de Terceros (Guideline 5.1.2(i))**: Diálogo de consentimiento explícito previo a enviar datos del ticket a un modelo de lenguaje en la nube.
+  - **Gestión de Cuentas (Guidelines 4.8 / 5.1.1(v))**: Si `M7` introduce cuentas, no bloquear el flujo local, ofrecer *Sign in with Apple* y proveer eliminación de cuenta in-app con revocación criptográfica de tokens.
+- [x] **Trazabilidad Git Profesional con Versionado Semántico**: Sincronizar los tags anotados de Git (`v0.6.0`, `v1.0.0-rc.N`, `v1.0.0`) con `MARKETING_VERSION` y `CURRENT_PROJECT_VERSION` de Xcode, automatizando la verificación en CI para tags `v*` y publicando releases estructurados en GitHub.
+
+### Files modified:
+- [`docs/product/roadmap.md`](docs/product/roadmap.md)
+- [`docs/product/vision.md`](docs/product/vision.md)
+- [`docs/architecture/system.md`](docs/architecture/system.md)
+- [`docs/decisions/ADR-003-ai-after-deterministic-parser.md`](docs/decisions/ADR-003-ai-after-deterministic-parser.md)
+- [`docs/decisions/ADR-004-appstore-release-strategy.md`](docs/decisions/ADR-004-appstore-release-strategy.md)
+- [`.agents/skills/git-workflow/SKILL.md`](.agents/skills/git-workflow/SKILL.md)
+- [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
+- [`README.md`](README.md)
