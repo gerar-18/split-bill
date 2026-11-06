@@ -16,6 +16,7 @@ nonisolated struct ReceiptSnapshot: Identifiable, Equatable, Sendable {
     var tipSelection: TipSelection
     var customTipMinorUnits: Int64?
     var receiptImageData: Data?
+    var ocrRawText: String?
 
     init(
         id: UUID = UUID(),
@@ -28,7 +29,8 @@ nonisolated struct ReceiptSnapshot: Identifiable, Equatable, Sendable {
         tax: Money? = nil,
         tipSelection: TipSelection = .percentage(10),
         customTipMinorUnits: Int64? = nil,
-        receiptImageData: Data? = nil
+        receiptImageData: Data? = nil,
+        ocrRawText: String? = nil
     ) {
         self.id = id
         self.title = title
@@ -41,6 +43,7 @@ nonisolated struct ReceiptSnapshot: Identifiable, Equatable, Sendable {
         self.tipSelection = tipSelection
         self.customTipMinorUnits = customTipMinorUnits
         self.receiptImageData = receiptImageData
+        self.ocrRawText = ocrRawText
     }
 
     /// Sum of all line item totals before tax and tip.

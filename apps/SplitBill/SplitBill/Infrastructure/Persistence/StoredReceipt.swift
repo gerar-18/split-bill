@@ -23,6 +23,7 @@ final class StoredReceipt {
     var customTipMinorUnits: Int64?
     var payloadData: Data
     @Attribute(.externalStorage) var receiptImageData: Data?
+    var ocrRawText: String?
 
     init(
         receiptID: UUID,
@@ -36,7 +37,8 @@ final class StoredReceipt {
         tipPercentage: Int?,
         customTipMinorUnits: Int64?,
         payloadData: Data,
-        receiptImageData: Data? = nil
+        receiptImageData: Data? = nil,
+        ocrRawText: String? = nil
     ) {
         self.receiptID = receiptID
         self.title = title
@@ -50,6 +52,7 @@ final class StoredReceipt {
         self.customTipMinorUnits = customTipMinorUnits
         self.payloadData = payloadData
         self.receiptImageData = receiptImageData
+        self.ocrRawText = ocrRawText
     }
 
     convenience init(from snapshot: ReceiptSnapshot) throws {
@@ -83,7 +86,8 @@ final class StoredReceipt {
             tipPercentage: tipPercentage,
             customTipMinorUnits: snapshot.customTipMinorUnits,
             payloadData: data,
-            receiptImageData: snapshot.receiptImageData
+            receiptImageData: snapshot.receiptImageData,
+            ocrRawText: snapshot.ocrRawText
         )
     }
 
@@ -116,6 +120,7 @@ final class StoredReceipt {
         self.customTipMinorUnits = snapshot.customTipMinorUnits
         self.payloadData = data
         self.receiptImageData = snapshot.receiptImageData
+        self.ocrRawText = snapshot.ocrRawText
     }
 
     func toSnapshot() throws -> ReceiptSnapshot {
@@ -146,7 +151,8 @@ final class StoredReceipt {
             tax: tax,
             tipSelection: tipSelection,
             customTipMinorUnits: customTipMinorUnits,
-            receiptImageData: receiptImageData
+            receiptImageData: receiptImageData,
+            ocrRawText: ocrRawText
         )
     }
 }

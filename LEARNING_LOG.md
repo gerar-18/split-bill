@@ -249,7 +249,7 @@ Status: Completed (3/3 tasks completed)
 
 ## M5 — OCR: Image to Text with Evaluation Fixtures
 
-Status: In Progress (1/3 tasks completed)
+Status: In Progress (2/3 tasks completed)
 
 ### Task 1: Motor OCR con Vision y Reconstrucción Geométrica de Líneas
 - **Concepts learned**:
@@ -260,6 +260,18 @@ Status: In Progress (1/3 tasks completed)
   - [`apps/SplitBill/SplitBill/Infrastructure/OCR/ReceiptOCRModels.swift`](apps/SplitBill/SplitBill/Infrastructure/OCR/ReceiptOCRModels.swift)
   - [`apps/SplitBill/SplitBill/Infrastructure/OCR/ReceiptOCRService.swift`](apps/SplitBill/SplitBill/Infrastructure/OCR/ReceiptOCRService.swift)
   - [`apps/SplitBill/SplitBillTests/ReceiptOCRTests.swift`](apps/SplitBill/SplitBillTests/ReceiptOCRTests.swift)
+
+### Task 2: Persistencia de OCR, Integración en `ReceiptEditorViewModel` y Evaluation Fixtures
+- **Concepts learned**:
+  - [x] **Aislamiento Arquitectónico de Metadatos de Visión (`ADR-002`)**: `ocrRawText` se almacena en `ReceiptSnapshot` y `StoredReceipt` (persistencia) y se expone en `ReceiptEditorViewModel` (UI), pero el modelo puro `Receipt` y `SplitEngine` no se contaminan con texto no estructurado.
+  - [x] **Guardián contra *Actor Reentrancy* en `@MainActor`**: En Swift Concurrency, `await` cede el control del actor. Capturar `let activeReceiptID = receiptID; let data = receiptImageData` y verificar `guard receiptID == activeReceiptID, receiptImageData == data else { return }` tras la llamada asíncrona de Vision evita que resultados obsoletos sobreescriban una cuenta nueva si el usuario cambió de sesión o reemplazó la imagen mientras el OCR estaba en vuelo.
+  - [x] **Evaluation Fixtures Deterministas con Neural Engine**: Pruebas parametrizadas sobre presets sintéticos (`SampleReceiptPreset.allCases`) validando que el motor de Vision no solo reconozca texto, sino que agrupe con precisión geométrica el nombre del platillo y su precio en la misma línea lógica reconstruida (`ReceiptOCRLine.text`).
+- **Files implemented**:
+  - [`apps/SplitBill/SplitBill/Infrastructure/Persistence/ReceiptSnapshot.swift`](apps/SplitBill/SplitBill/Infrastructure/Persistence/ReceiptSnapshot.swift)
+  - [`apps/SplitBill/SplitBill/Infrastructure/Persistence/StoredReceipt.swift`](apps/SplitBill/SplitBill/Infrastructure/Persistence/StoredReceipt.swift)
+  - [`apps/SplitBill/SplitBill/UI/State/ReceiptEditorViewModel.swift`](apps/SplitBill/SplitBill/UI/State/ReceiptEditorViewModel.swift)
+  - [`apps/SplitBill/SplitBillTests/ReceiptOCREvaluationTests.swift`](apps/SplitBill/SplitBillTests/ReceiptOCREvaluationTests.swift)
+
 
 
 

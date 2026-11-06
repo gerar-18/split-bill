@@ -23,6 +23,7 @@ final class ReceiptEditorViewModel {
     private var receiptCreatedAt: Date = Date()
     private var isRestoringSession: Bool = false
     private let store: (any ReceiptPersistenceStore)?
+    private let ocrService: any ReceiptOCRService
 
     // MARK: - State Properties
 
@@ -44,14 +45,33 @@ final class ReceiptEditorViewModel {
     var receiptImageData: Data? = nil {
         didSet { persistCurrentSession() }
     }
+    private(set) var ocrRawText: String? = nil
+    private(set) var lastOCRResult: ReceiptOCRResult? = nil
+    private(set) var isRecognizingText: Bool = false
+
+    /// Indicates whether recognized OCR text is present and non-empty.
+    var hasOCRText: Bool {
+        !(ocrRawText?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+    }
+
+    /// Number of lines detected by OCR.
+    var ocrLineCount: Int {
+        lastOCRResult?.lines.count ?? (ocrRawText?.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }.count ?? 0)
+    }
+
     var activeItemDraft: ReceiptItemDraft? = nil
     var validationMessage: String? = nil
 
     // MARK: - Initializer
 
-    init(currency: Currency = .mxn, store: (any ReceiptPersistenceStore)? = nil) {
+    init(
+        currency: Currency = .mxn,
+        store: (any ReceiptPersistenceStore)? = nil,
+        ocrService: any ReceiptOCRService = VisionReceiptOCRService()
+    ) {
         self.currency = currency
         self.store = store
+        self.ocrService = ocrService
         self.receiptID = UUID()
         self.receiptCreatedAt = Date()
         loadInitialSession()
@@ -176,6 +196,37 @@ final class ReceiptEditorViewModel {
         return lines.joined(separator: "\n")
     }
 
+    // MARK: - OCR Actions
+
+    /// Triggers optical character recognition on the attached receipt image.
+    /// Uses an actor reentrancy guard to safely ignore stale results if the user switched
+    /// receipts or changed the image while recognition was running.
+    func recognizeReceiptText() async {
+        guard !isRecognizingText, let data = receiptImageData else { return }
+        let activeReceiptID = receiptID
+        isRecognizingText = true
+        defer { isRecognizingText = false }
+
+        do {
+            let result = try await ocrService.recognizeText(from: data)
+            guard receiptID == activeReceiptID, receiptImageData == data else { return }
+            lastOCRResult = result
+            ocrRawText = result.rawText
+            persistCurrentSession()
+        } catch {
+            guard receiptID == activeReceiptID, receiptImageData == data else { return }
+            validationMessage = "No se pudo reconocer el texto del recibo."
+        }
+    }
+
+    /// Sets the receipt title from the first non-empty line of recognized OCR text if title is currently empty.
+    func applySuggestedTitleFromOCR() {
+        guard receiptTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        if let firstLine = lastOCRResult?.lines.first?.text ?? ocrRawText?.components(separatedBy: .newlines).first(where: { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }) {
+            receiptTitle = firstLine.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+    }
+
     // MARK: - Participant Actions
 
     /// Adds a participant from `newParticipantName`. Trims whitespace and prevents duplicate names.
@@ -281,18 +332,24 @@ final class ReceiptEditorViewModel {
             validationMessage = "No se pudo procesar la imagen seleccionada."
             return
         }
+        ocrRawText = nil
+        lastOCRResult = nil
         receiptImageData = processed
         validationMessage = nil
     }
 
     /// Attaches a synthetic sample receipt image for mock, demo, and testing workflows.
     func attachSampleReceipt(_ preset: SampleReceiptPreset) {
+        ocrRawText = nil
+        lastOCRResult = nil
         receiptImageData = SampleReceiptImageGenerator.generateImageData(for: preset)
         validationMessage = nil
     }
 
     /// Removes the attached receipt image and persists the updated session.
     func removeReceiptImage() {
+        ocrRawText = nil
+        lastOCRResult = nil
         receiptImageData = nil
         validationMessage = nil
     }
@@ -332,6 +389,9 @@ final class ReceiptEditorViewModel {
         participants = snapshot.participants
         items = snapshot.items
         receiptImageData = snapshot.receiptImageData
+        ocrRawText = snapshot.ocrRawText
+        lastOCRResult = nil
+        isRecognizingText = false
         taxText = snapshot.tax.amountInMinorUnits > 0 ? MoneyFormatter.decimalString(from: snapshot.tax) : ""
         tipSelection = snapshot.tipSelection
         if let customUnits = snapshot.customTipMinorUnits, customUnits > 0 {
@@ -347,7 +407,8 @@ final class ReceiptEditorViewModel {
     func persistCurrentSession() {
         guard !isRestoringSession, let store else { return }
         let trimmedTitle = receiptTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        let hasContent = !trimmedTitle.isEmpty || !participants.isEmpty || !items.isEmpty || receiptImageData != nil
+        let hasOCR = !(ocrRawText?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+        let hasContent = !trimmedTitle.isEmpty || !participants.isEmpty || !items.isEmpty || receiptImageData != nil || hasOCR
         guard hasContent else {
             if savedReceipts.contains(where: { $0.id == receiptID }) {
                 try? store.delete(id: receiptID)
@@ -371,7 +432,8 @@ final class ReceiptEditorViewModel {
             tax: resolvedTax,
             tipSelection: tipSelection,
             customTipMinorUnits: customTipUnits,
-            receiptImageData: receiptImageData
+            receiptImageData: receiptImageData,
+            ocrRawText: ocrRawText
         )
 
         do {
@@ -393,6 +455,9 @@ final class ReceiptEditorViewModel {
         participants.removeAll()
         items.removeAll()
         receiptImageData = nil
+        ocrRawText = nil
+        lastOCRResult = nil
+        isRecognizingText = false
         newParticipantName = ""
         taxText = ""
         tipSelection = .percentage(10)
@@ -465,7 +530,6 @@ final class ReceiptEditorViewModel {
                 var mutable = pcts
                 for id in removedIDs { mutable.removeValue(forKey: id) }
                 guard !mutable.isEmpty else { return nil }
-                // If only 1 participant remains, assign 100% to them so the item remains valid
                 if mutable.count == 1, let remainingID = mutable.keys.first {
                     mutable[remainingID] = 100
                 }
@@ -478,7 +542,6 @@ final class ReceiptEditorViewModel {
                 ) {
                     return updatedItem
                 } else {
-                    // If remaining percentages do not sum to 100%, fallback to equal split among remaining participants
                     return try? ReceiptItem(
                         id: item.id,
                         name: item.name,
