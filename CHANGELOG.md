@@ -5,6 +5,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [1.1.0] - 2026-11-06
+
+### Added
+- **Visual Receipt Card Exporter (`ImageRenderer`) (M6.7)**:
+  - High-resolution Retina infographic receipt card view (`ReceiptShareCardView`) rendering at 3.0x scale (1140 px width) via `SwiftUI.ImageRenderer`.
+  - Dynamic card styling with two native themes: **Clásico** (Classic Light) and **Nocturno** (Midnight Dark).
+  - Detail granularity toggle allowing users to include or omit itemized dish breakdowns per participant.
+  - Native file sharing via `CoreTransferable` (`ShareableReceiptImage`) exporting actual `.png` image files with thumbnail previews to WhatsApp, iMessage, AirDrop, and Photos.
+  - Interactive preview sheet (`ReceiptSharePreviewSheet`) integrated into `SplitSummarySectionView` and top toolbar sharing menu in `ReceiptWorkspaceView`.
+  - Automated test suite `ReceiptShareCardTests` covering Master Conservation Invariant, bystander participant handling, and valid PNG byte header verification.
+
+---
+
 ## [1.0.0] - 2026-11-06
 
 ### Added

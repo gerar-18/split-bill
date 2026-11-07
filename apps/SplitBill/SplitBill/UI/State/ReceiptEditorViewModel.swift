@@ -59,6 +59,7 @@ final class ReceiptEditorViewModel {
     private(set) var parsedCandidate: ParsedReceiptCandidate? = nil
     var parsedReviewDraft: ParsedReceiptReviewDraft? = nil
     var isShowingParsedReviewSheet: Bool = false
+    var isShowingSharePreviewSheet: Bool = false
     var importValidationErrorMessage: String? = nil
 
     /// Indicates whether recognized OCR text is present and non-empty.
@@ -236,6 +237,62 @@ final class ReceiptEditorViewModel {
 
         lines.append("--------------------------------")
         return lines.joined(separator: "\n")
+    }
+
+    /// Structured card snapshot suitable for visual rendering with `ImageRenderer`.
+    var shareCardData: ReceiptShareCardData? {
+        guard let receipt = currentReceipt, let result = splitResult, !items.isEmpty, !participants.isEmpty else {
+            return nil
+        }
+
+        let trimmedTitle = receiptTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        let displayTitle = trimmedTitle.isEmpty ? "Resumen de Cuenta" : trimmedTitle
+
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "es_MX")
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        let dateString = formatter.string(from: Date())
+
+        var rows: [ReceiptShareCardData.ParticipantShareRow] = []
+        for participant in receipt.participants {
+            guard let summary = result.summariesByParticipant[participant.id] else { continue }
+
+            let assigned: [ReceiptShareCardData.AssignedItemShare] = receipt.items.compactMap { item in
+                guard let share = result.itemAllocations[item.id]?[participant.id], share.amountInMinorUnits > 0 else {
+                    return nil
+                }
+                return ReceiptShareCardData.AssignedItemShare(
+                    id: item.id,
+                    name: item.name,
+                    share: share,
+                    quantity: item.quantity
+                )
+            }
+
+            rows.append(
+                ReceiptShareCardData.ParticipantShareRow(
+                    id: participant.id,
+                    name: participant.name,
+                    total: summary.total,
+                    itemsSubtotal: summary.itemsSubtotal,
+                    tax: summary.taxAllocated,
+                    tip: summary.tipAllocated,
+                    assignedItems: assigned
+                )
+            )
+        }
+
+        return ReceiptShareCardData(
+            title: displayTitle,
+            dateText: dateString,
+            currency: currency,
+            itemsSubtotal: itemsSubtotal,
+            tax: resolvedTax,
+            tip: resolvedTip,
+            grandTotal: grandTotal,
+            participantRows: rows
+        )
     }
 
     // MARK: - OCR Actions

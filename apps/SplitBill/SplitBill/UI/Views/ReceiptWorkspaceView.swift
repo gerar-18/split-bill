@@ -82,10 +82,20 @@ struct ReceiptWorkspaceView: View {
 
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     if viewModel.splitResult != nil && !viewModel.items.isEmpty {
-                        ShareLink(item: viewModel.shareableSummaryText) {
+                        Menu {
+                            Button {
+                                viewModel.isShowingSharePreviewSheet = true
+                            } label: {
+                                Label("Tarjeta Visual (Imagen)", systemImage: "sparkles.rectangle.stack")
+                            }
+
+                            ShareLink(item: viewModel.shareableSummaryText) {
+                                Label("Resumen en Texto", systemImage: "doc.plaintext")
+                            }
+                        } label: {
                             Image(systemName: "square.and.arrow.up")
                         }
-                        .accessibilityLabel("Compartir resumen de la cuenta")
+                        .accessibilityLabel("Opciones para compartir la cuenta")
                     }
 
                     Button {
@@ -105,6 +115,9 @@ struct ReceiptWorkspaceView: View {
             }
             .sheet(isPresented: $isAboutPresented) {
                 AboutPrivacySheet()
+            }
+            .sheet(isPresented: $viewModel.isShowingSharePreviewSheet) {
+                ReceiptSharePreviewSheet(viewModel: viewModel)
             }
             .confirmationDialog(
                 "¿Iniciar nueva cuenta?",

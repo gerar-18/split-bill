@@ -18,8 +18,8 @@
 
 | Milestone | Target Version | Goal | Exit criterion | Status |
 |---|---|---|---|:---:|
-| **M6.7** | `v1.1.0` | **Visual Receipt Card Exporter (`ImageRenderer`)** | Render an infographic receipt summary card as PNG/PDF with custom branding, shareable directly to WhatsApp/iMessage | ⏳ Next |
-| **M7** | `v1.2.0` | **Local Cloud Backend (Docker Compose)** | NestJS + PostgreSQL running locally at $0 cost via Docker Compose for receipt sync and optional Apple authentication | 📋 Planned |
+| **M6.7** | `v1.1.0` | **Visual Receipt Card Exporter (`ImageRenderer`)** | Render an infographic receipt summary card as PNG/PDF with custom branding, shareable directly to WhatsApp/iMessage | ✅ Complete |
+| **M7** | `v1.2.0` | **Local Cloud Backend (Docker Compose)** | NestJS + PostgreSQL running locally at $0 cost via Docker Compose for receipt sync and optional Apple authentication | ⏳ Next |
 | **M7.5** | `v1.3.0` | **AI Extraction Proxy** | Backend LLM proxy with domain validation, explicit user consent dialog (Guideline 5.1.2(i)), and local/free model support | 📋 Planned |
 | **M8** | `v1.4.0` | Collaboration | Shared receipt workflow via QR / Universal Links without forced guest login, plus UGC report/hide controls (Guideline 1.2) | 📋 Planned |
 | **M9** | `v2.0.0` | Production v2.0 & Commercial StoreKit 2 | Live production backend, App Review demo credentials, `MetricKit` observability, and live StoreKit 2 subscriptions | 📋 Planned |

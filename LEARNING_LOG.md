@@ -419,3 +419,23 @@ Status: Completed (4/4 tasks completed)
 - [`docs/assets/app-icon-preview.png`](docs/assets/app-icon-preview.png)
 - [`docs/assets/01-workspace.png`](docs/assets/01-workspace.png)
 - [`docs/product/roadmap.md`](docs/product/roadmap.md)
+
+---
+
+## M6.7 — Visual Receipt Card Exporter (`ImageRenderer`) (v1.1.0)
+
+Status: Completed (3/3 tasks completed)
+
+### Concepts learned:
+- [x] **Renderizado Gráfico Declarativo con `ImageRenderer` en SwiftUI**: `ImageRenderer` permite convertir cualquier jerarquía declarativa de vistas de SwiftUI directamente en un `UIImage` o `CGImage` sin necesidad de instanciar controladores UIKit obsoletos ni renderizadores síncronos de ventana. Aislar el renderizador bajo `@MainActor` y configurar `renderer.scale = 3.0` garantiza una exportación nítida a resolución Retina (`@3x`) con dimensiones exactas para mensajería.
+- [x] **Exportación de Archivos Nativos con `CoreTransferable` y `ShareLink`**: En lugar de exportar únicamente texto no estructurado o URLs temporales, conformar `ShareableReceiptImage` al protocolo `Transferable` mediante `DataRepresentation(exportedContentType: .png)` y `suggestedFileName` permite que `ShareLink` entregue un archivo `.png` genuino a aplicaciones externas (WhatsApp, iMessage, AirDrop, Guardar en Fotos) junto con un `SharePreview` con miniatura.
+- [x] **Composición de Infografías Financieras con Tematización Dinámica**: Desacoplar los datos computados (`ReceiptShareCardData`) del estado de presentación mediante temas (`ReceiptCardTheme`: Clásico y Nocturno) y toggles interactivos (detalle de platillos asignados vs. resumen compacto) preservando siempre el Invariante Maestro de Conservación ($\sum \text{participantes} == \text{Total general}$) garantizado por el motor de Hamilton.
+
+### Files modified / created:
+- [`apps/SplitBill/SplitBill/UI/State/ReceiptShareCardData.swift`](apps/SplitBill/SplitBill/UI/State/ReceiptShareCardData.swift)
+- [`apps/SplitBill/SplitBill/UI/State/ReceiptEditorViewModel.swift`](apps/SplitBill/SplitBill/UI/State/ReceiptEditorViewModel.swift)
+- [`apps/SplitBill/SplitBill/UI/Views/ReceiptShareCardView.swift`](apps/SplitBill/SplitBill/UI/Views/ReceiptShareCardView.swift)
+- [`apps/SplitBill/SplitBill/UI/Views/ReceiptSharePreviewSheet.swift`](apps/SplitBill/SplitBill/UI/Views/ReceiptSharePreviewSheet.swift)
+- [`apps/SplitBill/SplitBill/UI/Views/SplitSummarySectionView.swift`](apps/SplitBill/SplitBill/UI/Views/SplitSummarySectionView.swift)
+- [`apps/SplitBill/SplitBill/UI/Views/ReceiptWorkspaceView.swift`](apps/SplitBill/SplitBill/UI/Views/ReceiptWorkspaceView.swift)
+- [`apps/SplitBill/SplitBillTests/ReceiptShareCardTests.swift`](apps/SplitBill/SplitBillTests/ReceiptShareCardTests.swift)

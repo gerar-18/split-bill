@@ -15,7 +15,7 @@
   </a>
   <img src="https://img.shields.io/badge/Swift-6.0-F05138?logo=swift&logoColor=white" alt="Swift 6">
   <img src="https://img.shields.io/badge/iOS-18.0%2B-000000?logo=apple&logoColor=white" alt="iOS 18+">
-  <img src="https://img.shields.io/badge/Tests-124%20Passing-34D399?logo=checkmarx&logoColor=white" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-127%20Passing-34D399?logo=checkmarx&logoColor=white" alt="Tests">
   <img src="https://img.shields.io/badge/Architecture-Clean%20%2F%20ADR--002-3B82F6" alt="Architecture">
   <img src="https://img.shields.io/badge/Dependencies-0%20(Pure%20Apple%20SDK)-8B5CF6" alt="0 Dependencies">
   <a href="LICENSE">
@@ -63,6 +63,7 @@ Most bill-splitting apps rely on binary floating-point (`Double` / `Float`) that
 | **Deterministic Parser & Reconciliation** | [`DeterministicReceiptParser.swift`](apps/SplitBill/SplitBill/Domain/DeterministicReceiptParser.swift) & [`ParsedReceiptReviewDraft.swift`](apps/SplitBill/SplitBill/UI/State/ParsedReceiptReviewDraft.swift)<br>Parses items, unit prices, IVA and tips with regex lookbehind; reconciles $\sum \text{items} + \text{tax} == \text{total}$ in real-time before import. |
 | **Resilient Persistence with Fallback** | [`ReceiptStore.swift`](apps/SplitBill/SplitBill/Infrastructure/Persistence/ReceiptStore.swift) & [`StoredReceipt.swift`](apps/SplitBill/SplitBill/Infrastructure/Persistence/StoredReceipt.swift)<br>Automated SwiftData store with graceful in-memory container fallback preventing launch crashes if disk storage fails. |
 | **Concurrency & Actor Reentrancy Guards** | [`ReceiptEditorViewModel.swift`](apps/SplitBill/SplitBill/UI/State/ReceiptEditorViewModel.swift)<br>Captures active receipt snapshot tokens to prevent out-of-order OCR completion from overwriting newly opened sessions. |
+| **Visual Card Exporter (`ImageRenderer`)** | [`ReceiptShareCardView.swift`](apps/SplitBill/SplitBill/UI/Views/ReceiptShareCardView.swift) & [`ReceiptSharePreviewSheet.swift`](apps/SplitBill/SplitBill/UI/Views/ReceiptSharePreviewSheet.swift)<br>Renders high-resolution Retina (@3x) infographic receipt cards using `ImageRenderer` and native `Transferable` PNG export. |
 | **App Store Compliance & Privacy Manifest** | [`PrivacyInfo.xcprivacy`](apps/SplitBill/SplitBill/PrivacyInfo.xcprivacy) & [`AboutPrivacySheet.swift`](apps/SplitBill/SplitBill/UI/Views/AboutPrivacySheet.swift)<br>Official Apple Privacy Manifest declaring zero tracking, plus in-app privacy disclosures meeting Guidelines 1.5 & 5.1.1(i). |
 
 ---
@@ -116,8 +117,8 @@ Architectural decisions are tracked in formal **Architecture Decision Records (A
 
 | Milestone | Target | Focus | Status |
 |---|---|---|:---:|
-| **M6.7** | `v1.1.0` | **Visual Receipt Card Exporter (`ImageRenderer`)** — Render a shareable image/card breakdown for WhatsApp / iMessage | ⏳ Next |
-| **M7** | `v1.2.0` | **Local Cloud Backend (Docker Compose)** — NestJS + PostgreSQL running locally at $0 cost for multi-device sync | 📋 Planned |
+| **M6.7** | `v1.1.0` | **Visual Receipt Card Exporter (`ImageRenderer`)** — Render a shareable image/card breakdown for WhatsApp / iMessage | ✅ Complete |
+| **M7** | `v1.2.0` | **Local Cloud Backend (Docker Compose)** — NestJS + PostgreSQL running locally at $0 cost for multi-device sync | ⏳ Next |
 | **M7.5** | `v1.3.0` | **AI Extraction Proxy** — LLM parser proxy via backend with explicit user consent modal | 📋 Planned |
 | **M8** | `v1.4.0` | **Shared Receipt Collaboration** — Real-time sessions via QR / Universal Links | 📋 Planned |
 | **M9** | `v2.0.0` | **Commercial App Store Release** — Production deployment with TestFlight & StoreKit 2 subscriptions | 📋 Planned |
@@ -126,7 +127,7 @@ Architectural decisions are tracked in formal **Architecture Decision Records (A
 
 ## 🧪 Testing & Verification
 
-The project includes **124 automated tests** across 16 test suites written in Apple's modern **Swift Testing** framework (`@Test`, `#expect`, parameterized arguments):
+The project includes **127 automated tests** across 17 test suites written in Apple's modern **Swift Testing** framework (`@Test`, `#expect`, parameterized arguments):
 
 To run the complete verification suite locally (architecture boundary checks, build check, and test suite):
 
@@ -138,7 +139,7 @@ Every push and tag automatically runs `./scripts/verify.sh` on macOS runners via
 1. **ADR-002 Boundary Gate**: `Domain/` contains zero occurrences of `import SwiftUI` and zero occurrences of `import SwiftData`.
 2. **Financial Invariant Gate**: `Domain/` contains zero occurrences of `Float` or `Double`.
 3. **Compilation Gate**: Compiles cleanly with Swift 6 strict concurrency for iOS 18+.
-4. **Swift Testing Gate**: 100% of the 124 tests pass.
+4. **Swift Testing Gate**: 100% of the 127 tests pass.
 
 ---
 

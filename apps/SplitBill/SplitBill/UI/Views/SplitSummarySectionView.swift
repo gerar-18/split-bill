@@ -32,13 +32,27 @@ struct SplitSummarySectionView: View {
                     }
                 }
 
-                ShareLink(item: viewModel.shareableSummaryText) {
-                    Label("Compartir Resumen", systemImage: "square.and.arrow.up")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
-                        .frame(minHeight: 44)
+                VStack(spacing: 8) {
+                    Button {
+                        viewModel.isShowingSharePreviewSheet = true
+                    } label: {
+                        Label("Compartir Tarjeta Visual", systemImage: "sparkles.rectangle.stack")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .frame(minHeight: 44)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .accessibilityLabel("Abrir vista previa de la tarjeta visual del recibo")
+
+                    ShareLink(item: viewModel.shareableSummaryText) {
+                        Label("Compartir como Texto", systemImage: "doc.plaintext")
+                            .font(.subheadline.weight(.medium))
+                            .frame(maxWidth: .infinity)
+                            .frame(minHeight: 38)
+                    }
+                    .buttonStyle(.bordered)
+                    .accessibilityLabel("Compartir resumen de la cuenta en texto plano")
                 }
-                .buttonStyle(.borderedProminent)
                 .padding(.top, 4)
             } else {
                 emptyGuidanceView
