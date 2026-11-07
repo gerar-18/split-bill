@@ -32,7 +32,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   - Official MIT License and public issue tracker links.
   - High-resolution visual screenshots in `docs/assets/`.
   - Comprehensive portfolio README with deep links to architecture highlights.
-  - Step-by-step free sideloading guide for installing directly onto physical iPhones via Xcode Personal Team ($0 cost).
+  - Step-by-step sideloading guide for installing directly onto physical iPhones via Xcode Personal Team.
 
 ### Changed
 - Restricted targeted device family to iPhone-only (`TARGETED_DEVICE_FAMILY = 1`) and supported platforms to `iphoneos iphonesimulator`.

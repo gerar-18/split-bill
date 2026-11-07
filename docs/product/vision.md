@@ -16,7 +16,7 @@ Make bill splitting feel like a short, delightful mobile workflow:
 
 ### Wave 1 — MVP & v1.0 Local-First App Store Release
 
-The first release focuses on a private, resilient, offline-first experience with zero server operating costs:
+The first release focuses on a private, resilient, offline-first experience with a self-contained on-device architecture:
 - **Financial Precision**: Minor-unit integer math with the Hamilton largest-remainder method for penny-accurate split totals.
 - **Assignment & Splitting**: 4 split modes (even, percentage, exact amount, shares), tax/tip allocation, and transparent per-person summaries.
 - **Local Persistence**: SwiftData automatic save and multi-receipt history surviving app restarts.

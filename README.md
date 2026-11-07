@@ -45,7 +45,7 @@
 
 Most bill-splitting apps rely on binary floating-point (`Double` / `Float`) that introduce fractional penny rounding errors, require forced accounts before showing any value, or send private user receipts to third-party servers.
 
-**SplitBill** is engineered from first principles as an **offline-first, zero-operating-cost, privacy-guaranteed mobile application**:
+**SplitBill** is engineered from first principles as an **offline-first, resilient, privacy-guaranteed mobile application**:
 - **Zero Floating-Point Representation**: All monetary values use exact integer minor units (`Int64` cents/centavos) with the **Hamilton largest-remainder method** for deterministic odd-cent allocation.
 - **On-Device Computer Vision**: Apple's native `Vision` framework performs optical character recognition locally on the Apple Neural Engine, paired with a custom geometric row-clustering algorithm.
 - **Strict Domain Boundary ([ADR-002](docs/decisions/ADR-002-domain-separation.md))**: The business logic is 100% independent of SwiftUI and SwiftData, preventing UI framework churn from compromising core calculations.
@@ -97,7 +97,7 @@ Architectural decisions are tracked in formal **Architecture Decision Records (A
 
 ---
 
-## 🗺️ Roadmap & Next Steps ($0 Cost)
+## 🗺️ Architecture Roadmap & Future Evolution
 
 ### Wave 1 — v1.0 Local-First (Complete)
 
@@ -111,14 +111,14 @@ Architectural decisions are tracked in formal **Architecture Decision Records (A
 | **M5** | `v0.5.0` | On-device Vision OCR with geometric line reconstruction | ✅ Complete |
 | **M6** | `v0.6.0` | Deterministic parsing with real-time financial reconciliation | ✅ Complete |
 | **M6.5** | `v1.0.0` | App Store readiness (`PrivacyInfo.xcprivacy`, 1024px icon, bundle tests) | ✅ Complete |
-| **M6.6** | `v1.0.0` | Portfolio showcase, MIT license, visual assets, and free sideloading guide | ✅ Complete |
+| **M6.6** | `v1.0.0` | Portfolio showcase, MIT license, visual assets, and sideloading guide | ✅ Complete |
 
-### Wave 2 — Extensions at $0 Cost & Future Cloud
+### Wave 2 — Cloud Architecture, Multi-Device Sync & Collaboration
 
 | Milestone | Target | Focus | Status |
 |---|---|---|:---:|
 | **M6.7** | `v1.1.0` | **Visual Receipt Card Exporter (`ImageRenderer`)** — Render a shareable image/card breakdown for WhatsApp / iMessage | ✅ Complete |
-| **M7** | `v1.2.0` | **Local Cloud Backend (Docker Compose)** — NestJS + PostgreSQL running locally at $0 cost for multi-device sync | ⏳ Next |
+| **M7** | `v1.2.0` | **Local Cloud Backend (Docker Compose)** — NestJS + PostgreSQL containerized with Docker Compose for multi-device sync | ⏳ Next |
 | **M7.5** | `v1.3.0` | **AI Extraction Proxy** — LLM parser proxy via backend with explicit user consent modal | 📋 Planned |
 | **M8** | `v1.4.0` | **Shared Receipt Collaboration** — Real-time sessions via QR / Universal Links | 📋 Planned |
 | **M9** | `v2.0.0` | **Commercial App Store Release** — Production deployment with TestFlight & StoreKit 2 subscriptions | 📋 Planned |
@@ -157,14 +157,14 @@ Every push and tag automatically runs `./scripts/verify.sh` on macOS runners via
    ```
 3. Select any iPhone simulator (e.g., iPhone 16 or iPhone 17) and press **Run (`⌘R`)**.
 
-### On Your Physical iPhone for FREE ($0 Cost)
-You do not need a paid $99/year Apple Developer account to run SplitBill on your personal iPhone:
+### On a Physical iPhone (Developer Sideloading)
+SplitBill can be deployed directly to your personal physical device using standard Apple Developer personal signing:
 1. Open `apps/SplitBill/SplitBill.xcodeproj` in Xcode.
-2. In **Xcode → Settings → Accounts**, click **`+`** and sign in with your free personal Apple ID.
+2. In **Xcode → Settings → Accounts**, click **`+`** and sign in with your Apple ID.
 3. Select the **`SplitBill`** target → **Signing & Capabilities** tab.
 4. Check **Automatically manage signing** and select your **Personal Team**.
 5. Connect your iPhone via USB cable or Wi-Fi, select it in the scheme bar, and press **Run (`⌘R`)**.
-6. On your iPhone, navigate to **Settings → General → VPN & Device Management**, tap your Apple ID, and select **Trust**.
+6. On your iPhone, navigate to **Settings → General → VPN & Device Management**, select your developer profile, and tap **Trust**.
 
 ---
 
