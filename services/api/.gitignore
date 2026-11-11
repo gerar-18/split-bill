@@ -1,0 +1,22 @@
+# Node & NPM
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Build & Dist
+dist/
+build/
+
+# Testing coverage
+coverage/
+*.lcov
+
+# Environment
+.env
+.env.local
+.env.production
+
+# IDE & OS
+.DS_Store
+.vscode/
+.idea/

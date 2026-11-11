@@ -439,3 +439,36 @@ Status: Completed (3/3 tasks completed)
 - [`apps/SplitBill/SplitBill/UI/Views/SplitSummarySectionView.swift`](apps/SplitBill/SplitBill/UI/Views/SplitSummarySectionView.swift)
 - [`apps/SplitBill/SplitBill/UI/Views/ReceiptWorkspaceView.swift`](apps/SplitBill/SplitBill/UI/Views/ReceiptWorkspaceView.swift)
 - [`apps/SplitBill/SplitBillTests/ReceiptShareCardTests.swift`](apps/SplitBill/SplitBillTests/ReceiptShareCardTests.swift)
+
+---
+
+## M7 — Local Cloud Backend (Docker Compose & NestJS) (v1.2.0)
+
+Status: Completed (6/6 tasks completed)
+
+### Concepts learned:
+- [x] **Monetary Precision en Arquitecturas Cloud (PostgreSQL `BIGINT` + Minor Units)**: Extensión de la regla `ADR-002` al backend. En bases de datos relacionales, el uso de tipos de coma flotante (`REAL`, `FLOAT`, `DOUBLE PRECISION`) provoca discrepancias irreparables al sumar centavos. Almacenar montos exclusivamente como `BIGINT` en PostgreSQL e intermediar en NestJS mediante `BigInt` garantiza reconciliación exacta ($\sum \text{items} + \text{tax} + \text{tip} == \text{total}$).
+- [x] **Serialización Segura de `BigInt` en JavaScript/TypeScript**: El motor V8 de JavaScript no puede convertir nativamente instancias de `BigInt` mediante `JSON.stringify()`. Diseñar un `BigIntInterceptor` global que mapee a `Number` cuando el valor se encuentra dentro del rango seguro IEEE-754 (`Number.MAX_SAFE_INTEGER`, suficiente para hasta ~90 billones de dólares en centavos) y a `String` si lo excediera, evita caídas de la API sin perder precisión de 64 bits.
+- [x] **Sincronización Idempotente Local-First (Last-Write-Wins)**: En una app móvil offline-first, los identificadores son generados en el cliente (`clientReceiptId: UUID`). El endpoint `PUT /v1/receipts/:id` implementa resolución idempotente LWW: si un paquete desfasado o repetido llega con `clientUpdatedAt <= existing.clientUpdatedAt`, el servidor responde con el estado existente sin ejecutar mutaciones en base de datos. Si es más reciente, reemplaza atómicamente los desgloses dentro de una transacción Prisma (`$transaction`).
+- [x] **Cumplimiento de Privacidad y Borrado de Cuenta en Cascada (Apple Guideline 5.1.1(v))**: La normativa de App Store exige que cualquier aplicación que cree cuentas proporcione un mecanismo inmediato de borrado. Diseñar el esquema Prisma con `onDelete: Cascade` en todas las relaciones (`User -> Receipt -> ReceiptItem / ReceiptParticipant`) permite que `DELETE /v1/users/me` purgue la totalidad de los datos del usuario en una sola operación atómica.
+- [x] **Estrategia de Autenticación Dual (Dev Mode vs. Apple Identity Tokens)**: Desarrollar servicios desacoplados requiere probar endpoints localmente sin forzar certificados de firma de Apple. Configurar `AuthGuard` para admitir cabeceras `x-dev-user-id` únicamente cuando `NODE_ENV !== 'production'` (con normalización case-insensitive) permite una suite de tests E2E y pruebas en Postman/cURL instantáneas y seguras.
+
+### Files modified / created:
+- [`services/api/docker-compose.yml`](services/api/docker-compose.yml)
+- [`services/api/Dockerfile`](services/api/Dockerfile)
+- [`services/api/package.json`](services/api/package.json)
+- [`services/api/tsconfig.json`](services/api/tsconfig.json)
+- [`services/api/prisma/schema.prisma`](services/api/prisma/schema.prisma)
+- [`services/api/prisma/migrations/20261111150000_init/migration.sql`](services/api/prisma/migrations/20261111150000_init/migration.sql)
+- [`services/api/src/common/interceptors/bigint.interceptor.ts`](services/api/src/common/interceptors/bigint.interceptor.ts)
+- [`services/api/src/common/guards/auth.guard.ts`](services/api/src/common/guards/auth.guard.ts)
+- [`services/api/src/modules/receipts/dto/receipt.dto.ts`](services/api/src/modules/receipts/dto/receipt.dto.ts)
+- [`services/api/src/modules/receipts/receipts.service.ts`](services/api/src/modules/receipts/receipts.service.ts)
+- [`services/api/src/modules/receipts/receipts.controller.ts`](services/api/src/modules/receipts/receipts.controller.ts)
+- [`services/api/src/modules/users/users.service.ts`](services/api/src/modules/users/users.service.ts)
+- [`services/api/src/modules/users/users.controller.ts`](services/api/src/modules/users/users.controller.ts)
+- [`services/api/src/modules/health/health.controller.ts`](services/api/src/modules/health/health.controller.ts)
+- [`services/api/src/test/adversarial.spec.ts`](services/api/src/test/adversarial.spec.ts)
+- [`docs/product/roadmap.md`](docs/product/roadmap.md)
+- [`LEARNING_LOG.md`](LEARNING_LOG.md)
+

@@ -1,0 +1,63 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id              String         @id @default(uuid())
+  appleSubject    String?        @unique
+  email           String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  receipts        Receipt[]
+
+  @@map("users")
+}
+
+model Receipt {
+  id              String         @id @default(uuid()) // UUID v4 generado por el cliente
+  ownerId         String?
+  owner           User?          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  title           String
+  date            DateTime
+  currency        String         // Código ISO-4217 (ej. "USD", "MXN", "EUR")
+  subtotalCents   BigInt         // Centavos (minor units)
+  taxCents        BigInt         // Centavos
+  tipCents        BigInt         // Centavos
+  totalCents      BigInt         // Centavos
+  version         Int            @default(1)
+  clientCreatedAt DateTime
+  clientUpdatedAt DateTime
+  syncedAt        DateTime       @default(now())
+
+  items           ReceiptItem[]
+  participants    ReceiptParticipant[]
+
+  @@index([ownerId])
+  @@index([clientUpdatedAt])
+  @@map("receipts")
+}
+
+model ReceiptItem {
+  id              String         @id @default(uuid())
+  receiptId       String
+  receipt         Receipt        @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  name            String
+  quantity        Int            @default(1)
+  priceCents      BigInt         // Centavos
+
+  @@map("receipt_items")
+}
+
+model ReceiptParticipant {
+  id              String         @id @default(uuid())
+  receiptId       String
+  receipt         Receipt        @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  name            String
+
+  @@map("receipt_participants")
+}
