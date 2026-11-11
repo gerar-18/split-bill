@@ -31,7 +31,9 @@ Build SplitBill as a modern, testable, privacy-conscious iOS product while using
 |---|---|---|
 | `planner` | Before implementing any non-trivial feature, milestone (`M1`–`M9`), or domain design. | `/plan` or *"Diseña el plan de [feature] con `planner`"* |
 | `ios-engineer` | To write or modify Swift/SwiftUI code in `apps/SplitBill/` following an approved plan. | *"Implementa la tarea X con `ios-engineer`"* |
-| `qa-engineer` | To design edge-case tests, verify financial invariants, and run `./scripts/verify.sh`. | *"Valida los casos borde de [feature] con `qa-engineer`"* |
+| `backend-engineer` | To write or modify NestJS, PostgreSQL, or Docker Compose code in `services/api/`. | *"Implementa el endpoint X con `backend-engineer`"* |
+| `qa-engineer` | To validate acceptance criteria, write edge-case unit tests, and run `./scripts/verify.sh`. | *"Valida los criterios de [feature] con `qa-engineer`"* |
+| `adversarial-tester` | Red-Team testing: property-based tests, boundary fuzzing, idempotency & invariant stress tests. | *"Ejecuta pruebas adversariales sobre [módulo] con `adversarial-tester`"* |
 | `code-reviewer` | Before committing/merging to audit `git diff` for bugs, ADRs, and security (read-only). | *"Revisa mis cambios con `code-reviewer`"* |
 
 ### Skills (`.agents/skills/`) — Activate by Task Context
@@ -44,6 +46,8 @@ Build SplitBill as a modern, testable, privacy-conscious iOS product while using
 | **SwiftUI screens, `@Observable` & navigation** | `swiftui-guidelines`, `swift-guidelines` | `swiftui-pro`, `mobile-ios-design` |
 | **Async/await, actors & `@MainActor` isolation** | `swift-guidelines` | `swift-concurrency-pro` |
 | **Writing or running unit tests (`SplitBillTests`)** | `ios-testing` | `swift-testing-pro` |
+| **Adversarial, property-based & fuzz testing** | `money-calculation`, `backend-guidelines` | `property-based-testing`, `security-review` |
+| **Backend NestJS, APIs, Docker & PostgreSQL** | `backend-guidelines`, `money-calculation` | `nestjs-best-practices`, `postgresql-table-design` |
 | **Code review, security & privacy audit** | `project-guidelines`, `swift-guidelines` | `security-review` |
 | **Staging, committing or branching in Git** | `git-workflow` | — |
 
@@ -52,10 +56,11 @@ Build SplitBill as a modern, testable, privacy-conscious iOS product while using
 For non-trivial work:
 
 1. **Planner (`planner`)**: requirements, risks, acceptance criteria, task breakdown, and learning checkpoint.
-2. **Implementer (`ios-engineer`)**: smallest implementation that satisfies the approved plan + `./scripts/verify.sh`.
-3. **QA (`qa-engineer`)**: Swift Testing unit tests and financial edge cases + `./scripts/verify.sh`.
-4. **Reviewer (`code-reviewer`)**: architecture, maintainability, security (`security-review`), and regression review.
-5. **Human**: final review, commit (`git-workflow`), and `LEARNING_LOG.md` entry.
+2. **Implementer (`ios-engineer` / `backend-engineer`)**: smallest implementation that satisfies the approved plan + verification scripts.
+3. **QA (`qa-engineer`)**: acceptance criteria verification and edge-case unit tests.
+4. **Adversarial Red-Team (`adversarial-tester`)**: invariant stress-testing, property-based tests (`property-based-testing`), and failure injection.
+5. **Reviewer (`code-reviewer`)**: architecture, maintainability, security (`security-review`), and regression review.
+6. **Human**: final review, commit (`git-workflow`), and `LEARNING_LOG.md` entry.
 
 ## Definition of Done
 

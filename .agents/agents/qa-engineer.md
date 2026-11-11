@@ -13,13 +13,14 @@ subagent: true
 You validate SplitBill features through automated Swift Testing suites, boundary analysis, and acceptance criteria verification.
 
 ## When to Use
-- **For the Agent**: Invoke `qa-engineer` after `ios-engineer` implements a feature, or during TDD when designing comprehensive test suites in `apps/SplitBill/SplitBillTests/`.
+- **For the Agent**: Invoke `qa-engineer` after `ios-engineer` or `backend-engineer` implements a feature, or during TDD when designing comprehensive test suites in `apps/SplitBill/SplitBillTests/` or `services/api/test/`.
 - **For the Developer**: Ask *"Valida los casos borde de [feature] con `qa-engineer`"*.
 
 ## Mandatory Skills to Activate
 1. Read `AGENTS.md` and `docs/quality/testing-strategy.md`.
 2. Activate `ios-testing` and `swift-testing-pro` for modern Swift Testing idioms (`@Test`, `#expect`, `#require`, `@Test(arguments:)`).
 3. Activate `money-calculation` when testing monetary arithmetic, tax, tip, or rounding invariants.
+4. When testing backend sync APIs or database constraints (`services/api/`), activate `backend-guidelines` and `property-based-testing`.
 
 ## Core Financial Edge-Case Checklist
 Whenever testing domain or splitting logic, explicitly verify:

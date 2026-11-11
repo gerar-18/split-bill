@@ -1,35 +1,56 @@
 {
-  "version": 1,
+  "version": 2,
   "skills": {
     "mobile-ios-design": {
       "source": "wshobson/agents",
       "sourceType": "github",
       "skillPath": "plugins/ui-design/skills/mobile-ios-design/SKILL.md",
-      "computedHash": "3902f919488d8ddc983e157bbcd5f16b739b84eeaab57002bf52b7f9601ed6ad"
+      "computedHash": "5570323b61733522a95d857151be5114391694884c50ede155bdad620e018f20"
+    },
+    "nestjs-best-practices": {
+      "source": "Kadajett/agent-nestjs-skills",
+      "sourceType": "github",
+      "skillPath": "skills/nestjs-best-practices/SKILL.md",
+      "computedHash": "15dfabf74412bab8e6232cbe111b56048aac496d2f151a08995f305475d82fad",
+      "installMode": "copy"
+    },
+    "postgresql-table-design": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "skillPath": "plugins/database-design/skills/postgresql-table-design/SKILL.md",
+      "computedHash": "c2d9f4b5037b4320be0cc2489eeb287d3147477ae1f48b33f5f897e2c562ed06",
+      "installMode": "copy"
+    },
+    "property-based-testing": {
+      "source": "trailofbits/skills",
+      "sourceType": "github",
+      "skillPath": "plugins/property-based-testing/skills/property-based-testing/SKILL.md",
+      "computedHash": "1fadba845ba4a8f8916bb58f5b61dda6142780851ffb6a5a5ff82574b7798bfa",
+      "installMode": "copy"
     },
     "security-review": {
       "source": "getsentry/skills",
       "sourceType": "github",
       "skillPath": "skills/security-review/SKILL.md",
-      "computedHash": "194b70d3a2a4e0b23a436866c95496457962d1a818c382c56e4912bcd0cc3424"
+      "computedHash": "4af8c6b37142b46cbbca40d5f5e6c505699b8785486a7306faf1b79dcce7ff47"
     },
     "swift-concurrency-pro": {
       "source": "twostraws/swift-concurrency-agent-skill",
       "sourceType": "github",
       "skillPath": "swift-concurrency-pro/SKILL.md",
-      "computedHash": "db6c88d8da1a264188a2ad826a0ed73d227384315b27e47f3bb6b78ca1a3df40"
+      "computedHash": ""
     },
     "swift-testing-pro": {
       "source": "twostraws/swift-testing-agent-skill",
       "sourceType": "github",
       "skillPath": "swift-testing-pro/SKILL.md",
-      "computedHash": "576d9b4705c76262095e2470e99bb9a89324ac4467e7ee54b7032697a8789b3d"
+      "computedHash": ""
     },
     "swiftui-pro": {
       "source": "twostraws/swiftui-agent-skill",
       "sourceType": "github",
       "skillPath": "swiftui-pro/SKILL.md",
-      "computedHash": "88fefb2239299c8815366b89737ba15e91358ab3e9a6fb69af2436ed4a704299"
+      "computedHash": ""
     }
   }
 }

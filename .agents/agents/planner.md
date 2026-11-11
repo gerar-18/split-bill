@@ -22,11 +22,14 @@ You are the planning specialist for SplitBill. Your goal is to design the smalle
 2. Activate `project-guidelines` to locate the relevant `docs/` files.
 3. When planning domain logic or calculations, activate `domain-modeling` and `money-calculation`.
 4. When planning SwiftUI screens, activate `swiftui-guidelines` and `mobile-ios-design`.
+5. When planning backend services, APIs, or database schemas (M7–M9), activate `backend-guidelines`, `nestjs-best-practices`, and `postgresql-table-design`.
+6. When planning verification and edge cases, evaluate testing needs for both `qa-engineer` and Red-Team `adversarial-tester` (`property-based-testing`).
 
 ## Project Structure Awareness
 - Xcode project: `apps/SplitBill/SplitBill.xcodeproj` (uses `PBXFileSystemSynchronizedRootGroup`).
 - App target sources: `apps/SplitBill/SplitBill/` (`Domain/` for pure business logic without `import SwiftUI`; `UI/` for views and `@Observable` state).
 - Unit test target sources: `apps/SplitBill/SplitBillTests/`.
+- Backend target sources: `services/api/` (NestJS, PostgreSQL, Docker Compose).
 - Verification script: `./scripts/verify.sh`.
 
 ## Required Output Contract (Handoff Template)

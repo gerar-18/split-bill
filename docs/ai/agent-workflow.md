@@ -11,21 +11,25 @@ sequenceDiagram
     actor Dev as Desarrollador (Tú)
     participant Main as Agente Principal
     participant Plan as planner
-    participant Eng as ios-engineer
+    participant Eng as ios-engineer / backend-engineer
     participant QA as qa-engineer
+    participant Adv as adversarial-tester (Red Team)
     participant Rev as code-reviewer
 
-    Dev->>Main: 1. Solicita funcionalidad / hito (ej. /plan M1 Money)
-    Main->>Plan: Delega análisis (activa project-guidelines, domain-modeling)
+    Dev->>Main: 1. Solicita funcionalidad / hito (ej. /plan M7 Sync Backend)
+    Main->>Plan: Delega análisis (activa project-guidelines, backend-guidelines, etc.)
     Plan-->>Dev: Entrega Plan + Criterios + Learning Checkpoint
     Dev->>Main: 2. Aprueba el plan y resuelve dudas
-    Main->>Eng: Delega implementación (activa swift-guidelines, money-calculation)
-    Eng->>Eng: Escribe código + ejecuta ./scripts/verify.sh
+    Main->>Eng: Delega implementación (activa swift/backend guidelines, money-calculation)
+    Eng->>Eng: Escribe código + ejecuta scripts de verificación
     Eng-->>Main: Entrega cambios + explicación técnica
-    Main->>QA: Delega pruebas de casos borde (activa ios-testing, swift-testing-pro)
-    QA->>QA: Añade tests parametrizados + ejecuta ./scripts/verify.sh
-    QA-->>Main: Confirma invariantes en verde
-    Main->>Rev: Solicita auditoría de diff (activa security-review, swiftui-pro)
+    Main->>QA: Delega validación de criterios de aceptación (activa ios-testing / swift-testing-pro)
+    QA->>QA: Verifica criterios + añade tests unitarios
+    QA-->>Main: Confirma criterios en verde
+    Main->>Adv: Solicita ataque adversarial (activa property-based-testing, security-review)
+    Adv->>Adv: Fuzzing, límites numéricos, idempotencia y búsqueda de contraejemplos
+    Adv-->>Main: Reporta resiliencia comprobada (o contraejemplo para corregir)
+    Main->>Rev: Solicita auditoría de diff (activa security-review, nestjs/swiftui-pro)
     Rev-->>Dev: Reporte de revisión ([BLOQUEANTE] / [APRENDIZAJE])
     Dev->>Main: 3. Actualiza LEARNING_LOG.md y hace commit (git-workflow)
 ```
@@ -38,17 +42,21 @@ Puedes dejar que el agente principal orqueste automáticamente a los subagentes,
 
 ### Etapa 1: Planificación y Diseño
 > **Ejemplo de prompt**:
-> `/plan Usa el subagente planner y las skills domain-modeling y money-calculation para diseñar la primera tarea del hito M1 (el tipo Money y su aritmética en centavos).`
+> `/plan Usa el subagente planner y las skills backend-guidelines y postgresql-table-design para diseñar el esquema del hito M7.`
 
 ### Etapa 2: Implementación Guiada
 > **Ejemplo de prompt**:
-> `El plan está aprobado. Usa ios-engineer para implementar el modelo Money en Domain/ y explícamelo paso a paso.`
+> `El plan está aprobado. Usa ios-engineer para el cliente o backend-engineer para la API en NestJS y explícamelo paso a paso.`
 
-### Etapa 3: Pruebas Exhaustivas y Casos Borde (QA)
+### Etapa 3: Validación de Criterios (QA)
 > **Ejemplo de prompt**:
-> `Usa qa-engineer con la skill swift-testing-pro para agregar pruebas parametrizadas de casos borde (0 centavos, 1 centavo, centavos impares) y corre ./scripts/verify.sh.`
+> `Usa qa-engineer para validar los criterios de aceptación del plan y correr ./scripts/verify.sh.`
 
-### Etapa 4: Revisión de Código y Seguridad antes de Commit
+### Etapa 4: Ataque Adversarial y Pruebas de Propiedades (Red Team)
+> **Ejemplo de prompt**:
+> `Pídele a adversarial-tester que intente romper el cálculo y la sincronización usando property-based-testing y fuzzing de entradas.`
+
+### Etapa 5: Revisión de Código y Seguridad antes de Commit
 > **Ejemplo de prompt**:
 > `Usa code-reviewer junto con la skill security-review para auditar el git diff actual antes de hacer commit.`
 

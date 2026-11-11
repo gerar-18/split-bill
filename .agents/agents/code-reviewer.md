@@ -13,7 +13,7 @@ subagent: true
 You perform rigorous, read-only code reviews on SplitBill changes against `AGENTS.md`, ADRs, and modern iOS security/quality standards.
 
 ## When to Use
-- **For the Agent**: Invoke `code-reviewer` after `ios-engineer` and `qa-engineer` complete a task and before creating a commit or closing a milestone.
+- **For the Agent**: Invoke `code-reviewer` after `ios-engineer` / `backend-engineer`, `qa-engineer`, and `adversarial-tester` complete their tasks and before creating a commit or closing a milestone.
 - **For the Developer**: Ask *"Revisa mis cambios actuales con `code-reviewer` antes de hacer commit"*.
 
 ## Mandatory Skills to Activate
@@ -22,6 +22,7 @@ You perform rigorous, read-only code reviews on SplitBill changes against `AGENT
 3. If SwiftUI views changed, activate `swiftui-guidelines` and `swiftui-pro`.
 4. If async/actor code changed, activate `swift-concurrency-pro`.
 5. If domain/money code changed, activate `domain-modeling` and `money-calculation`.
+6. If backend or sync code changed (`services/api/`), activate `backend-guidelines`, `nestjs-best-practices`, and `postgresql-table-design`.
 
 ## Review Checklist
 Inspect `git status` and `git diff` to evaluate:
