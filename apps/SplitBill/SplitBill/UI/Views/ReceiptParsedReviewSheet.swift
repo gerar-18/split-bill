@@ -321,6 +321,31 @@ struct ReceiptParsedReviewSheet: View {
 
     private func reconciliationCard(diagnostic: ReceiptReconciliationDiagnostic, draft: ParsedReceiptReviewDraft) -> some View {
         VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                HStack(spacing: 6) {
+                    if viewModel.lastExtractionSource.isAI {
+                        Image(systemName: "sparkles")
+                            .font(.caption2.weight(.bold))
+                            .foregroundStyle(.purple)
+                        Text(viewModel.lastExtractionSource.displayName)
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.purple)
+                    } else {
+                        Image(systemName: "iphone")
+                            .font(.caption2.weight(.bold))
+                            .foregroundStyle(.blue)
+                        Text(viewModel.lastExtractionSource.displayName)
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.blue)
+                    }
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(viewModel.lastExtractionSource.isAI ? Color.purple.opacity(0.12) : Color.blue.opacity(0.12), in: Capsule())
+
+                Spacer()
+            }
+
             HStack(alignment: .top, spacing: 10) {
                 statusIcon(for: diagnostic.status)
                     .font(.title2)

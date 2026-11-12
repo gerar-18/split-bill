@@ -137,11 +137,11 @@ nonisolated struct ParsedReceiptCandidate: Equatable, Sendable {
 
 /// Contract for turning raw receipt lines into a structured `ParsedReceiptCandidate`.
 protocol ReceiptParser: Sendable {
-    func parse(lines: [String], currency: Currency) -> ParsedReceiptCandidate
+    nonisolated func parse(lines: [String], currency: Currency) -> ParsedReceiptCandidate
 }
 
 extension ReceiptParser {
-    func parse(rawText: String, currency: Currency) -> ParsedReceiptCandidate {
+    nonisolated func parse(rawText: String, currency: Currency) -> ParsedReceiptCandidate {
         let lines = rawText.components(separatedBy: .newlines)
         return parse(lines: lines, currency: currency)
     }

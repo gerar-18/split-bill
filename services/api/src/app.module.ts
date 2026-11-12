@@ -5,6 +5,7 @@ import { HealthModule } from './modules/health/health.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { ReceiptsModule } from './modules/receipts/receipts.module';
+import { AiProxyModule } from './modules/ai-proxy/ai-proxy.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { ReceiptsModule } from './modules/receipts/receipts.module';
     AuthModule,
     UsersModule,
     ReceiptsModule,
+    AiProxyModule,
   ],
 })
 export class AppModule {}

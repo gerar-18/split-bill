@@ -19,6 +19,7 @@ struct ReceiptOCRTextSheet: View {
 
                 if viewModel.hasOCRText {
                     analyzeAndImportBanner
+                    aiExtractBanner
                 }
 
                 if shouldShowQuickAction {
@@ -168,6 +169,46 @@ struct ReceiptOCRTextSheet: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
         .accessibilityLabel("Analizar texto del ticket y abrir revisión de platillos")
+    }
+
+    private var aiExtractBanner: some View {
+        Button {
+            dismiss()
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(300))
+                await viewModel.requestAIReceiptParsing()
+            }
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "sparkles")
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(.purple)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Extraer con IA ✨")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(.purple)
+
+                    Text("Interpreta platillos complejos, combos y propinas con IA")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Image(systemName: "arrow.right.circle.fill")
+                    .font(.title3)
+                    .foregroundStyle(.purple)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(Color.purple.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 4)
+        .accessibilityLabel("Analizar texto del ticket con Inteligencia Artificial")
     }
 
     private var shouldShowQuickAction: Bool {

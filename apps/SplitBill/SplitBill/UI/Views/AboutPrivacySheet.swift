@@ -7,10 +7,17 @@ struct AboutPrivacySheet: View {
     // MARK: - Environment & State
 
     @Environment(\.dismiss) private var dismiss
+    @State private var hasConsent: Bool = false
     let metadata: AppMetadata
+    private let consentStore: any AIConsentStoring
 
-    init(metadata: AppMetadata = .current()) {
+    init(
+        metadata: AppMetadata = .current(),
+        consentStore: any AIConsentStoring = UserDefaultsAIConsentStore()
+    ) {
         self.metadata = metadata
+        self.consentStore = consentStore
+        _hasConsent = State(initialValue: consentStore.hasGrantedConsent)
     }
 
     // MARK: - Body
@@ -21,6 +28,7 @@ struct AboutPrivacySheet: View {
                 VStack(spacing: 20) {
                     headerView
                     privacyCardView
+                    aiPrivacyCardView
                     featuresCardView
                     legalLinksCardView
                 }
@@ -103,6 +111,54 @@ struct AboutPrivacySheet: View {
                     description: "SplitBill no incluye anuncios, SDKs de rastreo publicitario ni vende tus hábitos de consumo."
                 )
             }
+        }
+        .padding(16)
+        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 16))
+    }
+
+    private var aiPrivacyCardView: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Label("Extracción Inteligente con IA", systemImage: "sparkles")
+                .font(.headline)
+                .foregroundStyle(.purple)
+
+            Text("SplitBill incluye un asistente opcional que interpreta tickets complejos utilizando IA segura. Requiere tu consentimiento explícito antes de enviar cualquier texto (Apple Guideline 5.1.2(i)).")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Estado del consentimiento:")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    if hasConsent {
+                        Text("Consentimiento activo")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.green)
+                    } else {
+                        Text("No otorgado")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Spacer()
+
+                if hasConsent {
+                    Button(role: .destructive) {
+                        consentStore.revokeConsent()
+                        hasConsent = consentStore.hasGrantedConsent
+                    } label: {
+                        Text("Revocar")
+                            .font(.caption.weight(.semibold))
+                            .frame(minHeight: 36)
+                    }
+                    .buttonStyle(.bordered)
+                    .accessibilityLabel("Revocar consentimiento de procesamiento con IA")
+                }
+            }
+            .padding(12)
+            .background(.background.tertiary, in: RoundedRectangle(cornerRadius: 10))
         }
         .padding(16)
         .background(.background.secondary, in: RoundedRectangle(cornerRadius: 16))

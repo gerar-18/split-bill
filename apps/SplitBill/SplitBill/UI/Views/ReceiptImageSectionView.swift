@@ -48,6 +48,9 @@ struct ReceiptImageSectionView: View {
         .sheet(isPresented: $viewModel.isShowingParsedReviewSheet) {
             ReceiptParsedReviewSheet(viewModel: viewModel)
         }
+        .sheet(isPresented: $viewModel.isShowingAIConsentSheet) {
+            AIConsentSheet(viewModel: viewModel)
+        }
         .confirmationDialog(
             "¿Eliminar foto del recibo?",
             isPresented: $showDeleteConfirmation,
@@ -314,6 +317,44 @@ struct ReceiptImageSectionView: View {
             }
             .buttonStyle(.borderedProminent)
             .accessibilityLabel("Revisar e importar \(viewModel.detectedParsedItemCount) platillos detectados del recibo")
+
+            if viewModel.isParsingWithAI {
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("Analizando ticket con IA...")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.purple)
+                }
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: 44)
+                .background(Color.purple.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+            } else {
+                Button {
+                    Task {
+                        await viewModel.requestAIReceiptParsing()
+                    }
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "sparkles")
+                            .foregroundStyle(.purple)
+                        Text("Extraer con IA ✨")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.purple)
+                        Spacer()
+                        Image(systemName: "arrow.right")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.purple)
+                    }
+                    .padding(.horizontal, 12)
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: 44)
+                    .background(Color.purple.opacity(0.1), in: RoundedRectangle(cornerRadius: 10))
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Analizar ticket con Inteligencia Artificial")
+            }
 
             Button {
                 isOCRSheetPresented = true

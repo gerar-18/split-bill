@@ -25,6 +25,8 @@ final class ReceiptEditorViewModel {
     private let store: (any ReceiptPersistenceStore)?
     private let ocrService: any ReceiptOCRService
     private let receiptParser: any ReceiptParser
+    private let aiParserService: any AIReceiptParserService
+    private let aiConsentStore: any AIConsentStoring
 
     // MARK: - State Properties
 
@@ -60,7 +62,15 @@ final class ReceiptEditorViewModel {
     var parsedReviewDraft: ParsedReceiptReviewDraft? = nil
     var isShowingParsedReviewSheet: Bool = false
     var isShowingSharePreviewSheet: Bool = false
+    var isShowingAIConsentSheet: Bool = false
+    private(set) var isParsingWithAI: Bool = false
+    private(set) var lastExtractionSource: ExtractionSource = .deterministic
     var importValidationErrorMessage: String? = nil
+
+    /// User has granted informed consent for AI analysis (Guideline 5.1.2(i)).
+    var hasGrantedAIConsent: Bool {
+        aiConsentStore.hasGrantedConsent
+    }
 
     /// Indicates whether recognized OCR text is present and non-empty.
     var hasOCRText: Bool {
@@ -109,12 +119,16 @@ final class ReceiptEditorViewModel {
         currency: Currency = .mxn,
         store: (any ReceiptPersistenceStore)? = nil,
         ocrService: any ReceiptOCRService = VisionReceiptOCRService(),
-        receiptParser: any ReceiptParser = DeterministicReceiptParser()
+        receiptParser: any ReceiptParser = DeterministicReceiptParser(),
+        aiParserService: any AIReceiptParserService = HTTPProxyAIReceiptParserService(),
+        aiConsentStore: any AIConsentStoring = UserDefaultsAIConsentStore()
     ) {
         self.currency = currency
         self.store = store
         self.ocrService = ocrService
         self.receiptParser = receiptParser
+        self.aiParserService = aiParserService
+        self.aiConsentStore = aiConsentStore
         self.receiptID = UUID()
         self.receiptCreatedAt = Date()
         loadInitialSession()
@@ -338,9 +352,60 @@ final class ReceiptEditorViewModel {
         }
 
         guard let candidate = parsedCandidate else { return }
+        lastExtractionSource = .deterministic
         parsedReviewDraft = ParsedReceiptReviewDraft(from: candidate)
         importValidationErrorMessage = nil
         isShowingParsedReviewSheet = true
+    }
+
+    // MARK: - AI Receipt Parsing Actions
+
+    /// Triggers AI-assisted receipt analysis. Prompts for informed consent if not yet granted (Guideline 5.1.2(i)).
+    func requestAIReceiptParsing() async {
+        guard !isParsingWithAI else { return }
+        guard aiConsentStore.hasGrantedConsent else {
+            isShowingAIConsentSheet = true
+            return
+        }
+
+        guard let rawText = ocrRawText, !rawText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            validationMessage = "Extrae el texto del ticket con OCR antes de analizar con IA."
+            return
+        }
+
+        let activeReceiptID = receiptID
+        isParsingWithAI = true
+        defer { isParsingWithAI = false }
+
+        do {
+            let result = try await aiParserService.parseReceiptWithAI(
+                rawText: rawText,
+                currency: currency,
+                userConsentConfirmed: true
+            )
+            guard receiptID == activeReceiptID else { return }
+            parsedCandidate = result.candidate
+            lastExtractionSource = .aiProxy(provider: result.providerUsed)
+            parsedReviewDraft = ParsedReceiptReviewDraft(from: result.candidate)
+            importValidationErrorMessage = nil
+            isShowingParsedReviewSheet = true
+            persistCurrentSession()
+        } catch {
+            guard receiptID == activeReceiptID else { return }
+            validationMessage = "No se pudo completar la extracción con IA: \(error.localizedDescription)"
+        }
+    }
+
+    /// Records explicit informed consent and proceeds with AI receipt analysis.
+    func grantAIConsentAndParse() async {
+        aiConsentStore.grantConsent()
+        isShowingAIConsentSheet = false
+        await requestAIReceiptParsing()
+    }
+
+    /// Revokes user consent for third-party AI processing.
+    func revokeAIConsent() {
+        aiConsentStore.revokeConsent()
     }
 
     /// Dismisses the review sheet and discards the unconfirmed draft.
@@ -546,6 +611,9 @@ final class ReceiptEditorViewModel {
         parsedCandidate = nil
         parsedReviewDraft = nil
         isShowingParsedReviewSheet = false
+        isShowingAIConsentSheet = false
+        isParsingWithAI = false
+        lastExtractionSource = .deterministic
         receiptImageData = processed
         validationMessage = nil
     }
@@ -557,6 +625,9 @@ final class ReceiptEditorViewModel {
         parsedCandidate = nil
         parsedReviewDraft = nil
         isShowingParsedReviewSheet = false
+        isShowingAIConsentSheet = false
+        isParsingWithAI = false
+        lastExtractionSource = .deterministic
         receiptImageData = SampleReceiptImageGenerator.generateImageData(for: preset)
         validationMessage = nil
     }
@@ -568,6 +639,9 @@ final class ReceiptEditorViewModel {
         parsedCandidate = nil
         parsedReviewDraft = nil
         isShowingParsedReviewSheet = false
+        isShowingAIConsentSheet = false
+        isParsingWithAI = false
+        lastExtractionSource = .deterministic
         receiptImageData = nil
         validationMessage = nil
     }
@@ -613,6 +687,9 @@ final class ReceiptEditorViewModel {
         parsedCandidate = nil
         parsedReviewDraft = nil
         isShowingParsedReviewSheet = false
+        isShowingAIConsentSheet = false
+        isParsingWithAI = false
+        lastExtractionSource = .deterministic
         importValidationErrorMessage = nil
         taxText = snapshot.tax.amountInMinorUnits > 0 ? MoneyFormatter.decimalString(from: snapshot.tax) : ""
         tipSelection = snapshot.tipSelection
@@ -683,6 +760,9 @@ final class ReceiptEditorViewModel {
         parsedCandidate = nil
         parsedReviewDraft = nil
         isShowingParsedReviewSheet = false
+        isShowingAIConsentSheet = false
+        isParsingWithAI = false
+        lastExtractionSource = .deterministic
         importValidationErrorMessage = nil
         newParticipantName = ""
         taxText = ""

@@ -31,6 +31,11 @@ services:
       PORT: 3000
       DATABASE_URL: postgresql://splitbill:splitbill_secret_password@db:5432/splitbill_db?schema=public
       JWT_SECRET: dev_jwt_secret_splitbill_2026
+      AI_PROVIDER: heuristic-fallback
+      DEEPSEEK_API_KEY: ""
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      AI_RATE_LIMIT_MAX: "20"
+      AI_FALLBACK_ON_ERROR: "true"
     ports:
       - "3000:3000"
     volumes:

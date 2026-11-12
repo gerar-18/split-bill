@@ -472,3 +472,54 @@ Status: Completed (6/6 tasks completed)
 - [`docs/product/roadmap.md`](docs/product/roadmap.md)
 - [`LEARNING_LOG.md`](LEARNING_LOG.md)
 
+
+
+---
+
+## M7.5 — AI Extraction Proxy (DeepSeek, Ollama & Informed Consent) (v1.3.0)
+
+Status: Completed (4/4 tasks completed)
+
+### Concepts learned:
+- [x] **Arquitectura Zero-Trust AI Proxy con Sanitización de Dominio (`ADR-003`)**:
+  - Los modelos de lenguaje son motores probabilísticos propensos a alucinaciones aritméticas y números decimales en punto flotante (`15.5`).
+  - Alojar la extracción detrás del proxy NestJS (`POST /v1/receipts/parse-ai`) protege las credenciales de proveedores (DeepSeek, OpenAI), aplica limitación de tasa en memoria (`AiRateLimitGuard`) y canaliza la respuesta a través de `AiDomainValidator` para asegurar que todo monto se convierta a centavos enteros seguros (`Int64`) y se clasifique con la invariante matemática de reconciliación (`verified`, `discrepancy`, `partial`, `empty`).
+- [x] **Estrategia Multi-Proveedor con Fallback Local Resiliente ($0 Costo)**:
+  - Diseñar el contrato `AiExtractionProvider` permite soportar de forma nativa APIs comerciales compatibles con OpenAI (como DeepSeek mediante `deepseek-chat` y JSON mode) y modelos open-source locales (Ollama con `llama3.2`).
+  - El motor determinista `HeuristicFallbackProvider` asegura que los tests unitarios (`npm test`), CI y simuladores de iOS operen al 100% sin requerir GPU externa, conexión a internet ni balance de crédito en APIs externas.
+- [x] **Consentimiento Informado Previo y Revocable (Apple App Store Guideline 5.1.2(i))**:
+  - Cumplimiento riguroso de las directrices de privacidad de Apple: antes de transmitir cualquier texto de recibo a un LLM, la aplicación presenta una hoja modal (`AIConsentSheet`) explicando con claridad qué datos se envían (únicamente texto del ticket y moneda), quién los procesa, con qué propósito y aclarando que nunca se usan para entrenar modelos de IA.
+  - La compuerta `AIConsentStoring` bloquea llamadas de red por defecto y permite al usuario revocar el consentimiento en cualquier momento desde `AboutPrivacySheet.swift`.
+- [x] **Human-in-the-Loop y Preservación de Semántica Financiera (`ADR-002`)**:
+  - Los candidatos devueltos por el proxy IA se mapean a `ParsedReceiptCandidate` puro y se presentan en `ReceiptParsedReviewSheet` para que el usuario valide, ajuste o excluya platillos antes de importarlos al modelo inmutable `Receipt` del dominio.
+  - El origen de la extracción se transparenta en la interfaz con badges distintivos (`Motor Local` vs `Asistido por IA`).
+
+### Files modified / created:
+- [`services/api/src/modules/ai-proxy/dto/parse-ai-receipt.dto.ts`](services/api/src/modules/ai-proxy/dto/parse-ai-receipt.dto.ts)
+- [`services/api/src/modules/ai-proxy/guards/ai-rate-limit.guard.ts`](services/api/src/modules/ai-proxy/guards/ai-rate-limit.guard.ts)
+- [`services/api/src/modules/ai-proxy/providers/ai-extraction-provider.interface.ts`](services/api/src/modules/ai-proxy/providers/ai-extraction-provider.interface.ts)
+- [`services/api/src/modules/ai-proxy/providers/heuristic-fallback.provider.ts`](services/api/src/modules/ai-proxy/providers/heuristic-fallback.provider.ts)
+- [`services/api/src/modules/ai-proxy/providers/openai-compatible.provider.ts`](services/api/src/modules/ai-proxy/providers/openai-compatible.provider.ts)
+- [`services/api/src/modules/ai-proxy/providers/ollama.provider.ts`](services/api/src/modules/ai-proxy/providers/ollama.provider.ts)
+- [`services/api/src/modules/ai-proxy/ai-domain-validator.ts`](services/api/src/modules/ai-proxy/ai-domain-validator.ts)
+- [`services/api/src/modules/ai-proxy/ai-proxy.service.ts`](services/api/src/modules/ai-proxy/ai-proxy.service.ts)
+- [`services/api/src/modules/ai-proxy/ai-proxy.controller.ts`](services/api/src/modules/ai-proxy/ai-proxy.controller.ts)
+- [`services/api/src/modules/ai-proxy/ai-proxy.module.ts`](services/api/src/modules/ai-proxy/ai-proxy.module.ts)
+- [`services/api/src/modules/ai-proxy/ai-proxy.spec.ts`](services/api/src/modules/ai-proxy/ai-proxy.spec.ts)
+- [`services/api/src/test/adversarial.spec.ts`](services/api/src/test/adversarial.spec.ts)
+- [`services/api/src/app.module.ts`](services/api/src/app.module.ts)
+- [`services/api/docker-compose.yml`](services/api/docker-compose.yml)
+- [`services/api/.env.example`](services/api/.env.example)
+- [`apps/SplitBill/SplitBill/Infrastructure/AI/AIConsentManager.swift`](apps/SplitBill/SplitBill/Infrastructure/AI/AIConsentManager.swift)
+- [`apps/SplitBill/SplitBill/Infrastructure/AI/AIReceiptParserModels.swift`](apps/SplitBill/SplitBill/Infrastructure/AI/AIReceiptParserModels.swift)
+- [`apps/SplitBill/SplitBill/Infrastructure/AI/AIReceiptParserService.swift`](apps/SplitBill/SplitBill/Infrastructure/AI/AIReceiptParserService.swift)
+- [`apps/SplitBill/SplitBill/UI/Views/AIConsentSheet.swift`](apps/SplitBill/SplitBill/UI/Views/AIConsentSheet.swift)
+- [`apps/SplitBill/SplitBill/UI/State/ReceiptEditorViewModel.swift`](apps/SplitBill/SplitBill/UI/State/ReceiptEditorViewModel.swift)
+- [`apps/SplitBill/SplitBill/UI/Views/ReceiptImageSectionView.swift`](apps/SplitBill/SplitBill/UI/Views/ReceiptImageSectionView.swift)
+- [`apps/SplitBill/SplitBill/UI/Views/ReceiptOCRTextSheet.swift`](apps/SplitBill/SplitBill/UI/Views/ReceiptOCRTextSheet.swift)
+- [`apps/SplitBill/SplitBill/UI/Views/ReceiptParsedReviewSheet.swift`](apps/SplitBill/SplitBill/UI/Views/ReceiptParsedReviewSheet.swift)
+- [`apps/SplitBill/SplitBill/UI/Views/AboutPrivacySheet.swift`](apps/SplitBill/SplitBill/UI/Views/AboutPrivacySheet.swift)
+- [`apps/SplitBill/SplitBill/Domain/ReceiptParser.swift`](apps/SplitBill/SplitBill/Domain/ReceiptParser.swift)
+- [`apps/SplitBill/SplitBillTests/AIReceiptParsingTests.swift`](apps/SplitBill/SplitBillTests/AIReceiptParsingTests.swift)
+- [`docs/legal/privacy.md`](docs/legal/privacy.md)
+- [`docs/product/roadmap.md`](docs/product/roadmap.md)

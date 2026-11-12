@@ -18,7 +18,14 @@ SplitBill fue diseñada desde sus cimientos bajo una arquitectura **Local-First*
 ### 2. Uso de Permisos del Sistema
 - **Cámara (`NSCameraUsageDescription`)**: SplitBill solicita acceso a la cámara exclusivamente para permitirte tomar fotografías de recibos y tickets de restaurantes en el momento. Las fotos capturadas se procesan en la memoria de tu dispositivo y se almacenan únicamente en la base de datos local (`SwiftData`) de tu iPhone. No se envían a ningún servidor ni servicio en la nube.
 - **Fototeca / Fotos**: Al seleccionar una foto existente, SplitBill utiliza el selector nativo fuera de proceso del sistema (`PhotosPicker` de Apple). La aplicación únicamente recibe la imagen que selecciones voluntariamente y nunca tiene acceso general a tu biblioteca de fotos.
-- **Reconocimiento de Texto (OCR)**: La extracción de texto de los tickets se realiza completamente en el dispositivo utilizando el framework `Vision` y el motor neuronal local de Apple (`Neural Engine`). Ningún texto ni imagen sale de tu dispositivo.
+- **Reconocimiento de Texto (OCR)**: La extracción de texto de los tickets se realiza por defecto completamente en el dispositivo utilizando el framework `Vision` y el motor neuronal local de Apple (`Neural Engine`).
+
+### 2.1 Uso Opcional de Inteligencia Artificial (Extracción Asistida)
+SplitBill ofrece una función opcional de estructuración de recibos asistida por Inteligencia Artificial. En estricto apego a la directriz 5.1.2(i) de Apple:
+- **Consentimiento Previo e Informado**: Ningún dato se envía a servicios de IA sin que el usuario otorgue consentimiento explícito mediante una pantalla informativa previa.
+- **Minimización de Datos**: Únicamente se envía el texto ya reconocido (OCR) y la moneda de la cuenta. **Nunca se transmiten fotografías del recibo, ubicación, contactos ni identificadores personales.**
+- **No Entrenamiento**: Los datos enviados se procesan exclusivamente para retornar la lista estructurada de platillos e importes y no son utilizados para entrenar modelos de IA de terceros.
+- **Revocabilidad**: El usuario puede revocar este consentimiento en cualquier momento desde la sección *Acerca de y Privacidad*.
 
 ### 3. Almacenamiento Local y Eliminación
 Toda la información registrada (nombres de comensales, importes, propinas y fotos de recibos) se almacena únicamente en tu iPhone. Puedes eliminar cualquier recibo o foto en cualquier momento directamente desde la aplicación con el botón de papelera, o eliminar todos los datos desinstalando la aplicación.
@@ -51,6 +58,13 @@ SplitBill is built from the ground up on a strict **Local-First** model. In the 
 - **Camera (`NSCameraUsageDescription`)**: Used strictly to photograph physical restaurant receipts. Captured photos are processed locally on-device and stored only in your local iPhone storage (`SwiftData`). No images are uploaded to any external server.
 - **Photo Library**: Selected via Apple's out-of-process `PhotosPicker`. The app only accesses the specific image you voluntarily choose, without general photo library access.
 - **On-Device OCR**: Optical Character Recognition uses Apple's native `Vision` framework running locally on your iPhone's Neural Engine.
+
+### 2.1 Optional AI-Assisted Extraction
+SplitBill offers an optional AI-assisted receipt structuring feature. In strict compliance with Apple Review Guideline 5.1.2(i):
+- **Prior Informed Consent**: No data is transmitted to AI services without explicit prior user consent via an informative prompt.
+- **Data Minimization**: Only the recognized OCR text and currency code are sent. **Receipt photographs, location, contacts, and personal identifiers are never transmitted.**
+- **No Model Training**: Transmitted data is used exclusively to parse items and prices for the active receipt session and is never used to train third-party AI models.
+- **Revocable Anytime**: Users can revoke AI consent at any time directly in the in-app *About & Privacy* sheet.
 
 ### 3. Data Retention and Deletion
 All participants, amounts, and receipt photos reside strictly on your physical device. You can delete any receipt inside the app at any time, or purge all data by uninstalling the application.
