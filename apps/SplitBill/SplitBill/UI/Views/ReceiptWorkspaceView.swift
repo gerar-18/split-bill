@@ -142,6 +142,34 @@ struct ReceiptWorkspaceView: View {
                     collaborationViewModel: collaborationViewModel
                 )
             }
+            .sheet(isPresented: Bindable(collaborationViewModel).isShowingJoinSheet) {
+                JoinSharedReceiptSheet(collaborationViewModel: collaborationViewModel)
+            }
+            .sheet(isPresented: Bindable(collaborationViewModel).isShowingLiveSessionSheet) {
+                SharedReceiptSessionView(collaborationViewModel: collaborationViewModel)
+            }
+            .alert(
+                "Cuenta Compartida",
+                isPresented: Binding(
+                    get: {
+                        !collaborationViewModel.isShowingShareSheet
+                            && !collaborationViewModel.isShowingJoinSheet
+                            && !collaborationViewModel.isShowingLiveSessionSheet
+                            && collaborationViewModel.errorMessage != nil
+                    },
+                    set: { isPresented in
+                        if !isPresented {
+                            collaborationViewModel.errorMessage = nil
+                        }
+                    }
+                )
+            ) {
+                Button("OK", role: .cancel) {
+                    collaborationViewModel.errorMessage = nil
+                }
+            } message: {
+                Text(collaborationViewModel.errorMessage ?? "")
+            }
             .confirmationDialog(
                 "¿Iniciar nueva cuenta?",
                 isPresented: $showNewReceiptConfirmation,

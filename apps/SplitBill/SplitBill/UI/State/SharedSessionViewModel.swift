@@ -372,6 +372,13 @@ final class SharedSessionViewModel {
         pollingTask = nil
     }
 
+    func handleIncomingURL(_ url: URL) {
+        guard let code = DeepLinkParser.parse(url) else {
+            return
+        }
+        openJoinFlow(prefilledCode: code.value)
+    }
+
     func openJoinFlow(prefilledCode: String? = nil) {
         errorMessage = nil
         if let prefilledCode {
