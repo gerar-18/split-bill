@@ -6,6 +6,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { ReceiptsModule } from './modules/receipts/receipts.module';
 import { AiProxyModule } from './modules/ai-proxy/ai-proxy.module';
+import { CollaborationModule } from './modules/collaboration/collaboration.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { AiProxyModule } from './modules/ai-proxy/ai-proxy.module';
     UsersModule,
     ReceiptsModule,
     AiProxyModule,
+    CollaborationModule,
   ],
 })
 export class AppModule {}
