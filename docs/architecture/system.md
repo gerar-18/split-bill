@@ -43,14 +43,17 @@ NestJS API Gateway
   ├── Auth Controller (Apple Identity Verification & Token Revocation)
   ├── Entitlement Guard (StoreKit 2 JWS Cryptographic Verification)
   ├── LLM Proxy Service (Rate-limited, zero API keys on client)
-  │      └── OpenAI / Google Gemini / Anthropic API
-  └── Receipt Collaboration Controller (WebSocket / REST sessions)
+  │      └── DeepSeek / Ollama / Heuristic Fallback Provider
+  └── Shared Collaboration Module (SSE Live Stream + REST Optimistic Locking)
+         ├── Anonymous SHA-256 Capability Tokens (No forced guest login)
+         ├── Additive Item Claims (`expectedVersion` -> `409 Conflict`)
+         └── UGC Moderation & Auto-Quarantine (Apple Guideline 1.2)
          │
          ▼
 PostgreSQL Database
   ├── Users (Apple sub identifier, cascade delete)
-  ├── Receipts & Items
-  └── Shared Sessions (Ephemeral access tokens for QR guests)
+  ├── Receipts & Items (`BIGINT` minor units)
+  └── SharedSessions, SharedParticipants & SessionReports (24h TTL)
 ```
 
 ---

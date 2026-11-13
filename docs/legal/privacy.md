@@ -27,6 +27,13 @@ SplitBill ofrece una función opcional de estructuración de recibos asistida po
 - **No Entrenamiento**: Los datos enviados se procesan exclusivamente para retornar la lista estructurada de platillos e importes y no son utilizados para entrenar modelos de IA de terceros.
 - **Revocabilidad**: El usuario puede revocar este consentimiento en cualquier momento desde la sección *Acerca de y Privacidad*.
 
+### 2.2 Colaboración Temporal en Tiempo Real (Cuentas Compartidas)
+Cuando el anfitrión decide voluntariamente compartir una cuenta mediante código QR o enlace (`splitbill://` / `https://splitbill.app/join`):
+- **Sin Cuentas Obligatorias**: Ni el anfitrión ni los invitados necesitan registrarse ni iniciar sesión. Los invitados únicamente ingresan un nombre temporal visible solo dentro de la sesión activa.
+- **Privacidad de Imagen por Defecto (Opt-In)**: La fotografía del recibo **NO se sube por defecto**. Únicamente se transmite si el anfitrión activa explícitamente la casilla opcional de compartir imagen del recibo.
+- **Tokens Efímeros y Expiración**: El acceso se controla mediante tokens aleatorios de sesión guardados en el Llavero de Apple con atributo `ThisDeviceOnly` (sin respaldo en iCloud). Las sesiones caducan automáticamente en 24 horas o al cerrarse por el anfitrión.
+- **Controles de Seguridad y Moderación (Guideline 1.2)**: Cualquier participante puede ocultar localmente la imagen del recibo, reportar contenido inapropiado (poniendo la sesión en cuarentena automática ante múltiples reportes) o bloquear y abandonar la sesión de inmediato.
+
 ### 3. Almacenamiento Local y Eliminación
 Toda la información registrada (nombres de comensales, importes, propinas y fotos de recibos) se almacena únicamente en tu iPhone. Puedes eliminar cualquier recibo o foto en cualquier momento directamente desde la aplicación con el botón de papelera, o eliminar todos los datos desinstalando la aplicación.
 
@@ -65,6 +72,13 @@ SplitBill offers an optional AI-assisted receipt structuring feature. In strict 
 - **Data Minimization**: Only the recognized OCR text and currency code are sent. **Receipt photographs, location, contacts, and personal identifiers are never transmitted.**
 - **No Model Training**: Transmitted data is used exclusively to parse items and prices for the active receipt session and is never used to train third-party AI models.
 - **Revocable Anytime**: Users can revoke AI consent at any time directly in the in-app *About & Privacy* sheet.
+
+### 2.2 Temporary Real-Time Shared Receipts
+When a host explicitly chooses to share a receipt via QR code or invite link (`splitbill://` / `https://splitbill.app/join`):
+- **No Forced Accounts**: Neither hosts nor guests are required to register or sign in. Guests provide only a temporary display name scoped to the active shared receipt.
+- **Privacy-First Image Sharing (Opt-In Only)**: Receipt photos are **excluded by default**. Images are uploaded only if the host explicitly enables the opt-in toggle when creating the session.
+- **Ephemeral Tokens & TTL**: Session participation relies on random capability tokens stored in Apple Keychain with `ThisDeviceOnly` accessibility. Sessions expire automatically after 24 hours or immediately when closed by the host.
+- **User-Generated Content Moderation (Guideline 1.2)**: Participants can locally hide any shared receipt image, submit categorized abuse reports (triggering automatic server quarantine after threshold reports), or permanently block and leave a session with a single confirmation.
 
 ### 3. Data Retention and Deletion
 All participants, amounts, and receipt photos reside strictly on your physical device. You can delete any receipt inside the app at any time, or purge all data by uninstalling the application.

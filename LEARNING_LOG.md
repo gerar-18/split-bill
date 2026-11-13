@@ -523,3 +523,56 @@ Status: Completed (4/4 tasks completed)
 - [`apps/SplitBill/SplitBillTests/AIReceiptParsingTests.swift`](apps/SplitBill/SplitBillTests/AIReceiptParsingTests.swift)
 - [`docs/legal/privacy.md`](docs/legal/privacy.md)
 - [`docs/product/roadmap.md`](docs/product/roadmap.md)
+
+
+---
+
+## M8 — Shared Receipt Collaboration (QR, SSE & Apple Guideline 1.2 UGC) (v1.4.0)
+
+Status: Completed (all tasks, red-team adversarial checks, and read-only architecture/security reviews passed)
+
+### Concepts learned:
+- [x] **Tokens de Capacidad Anónimos vs. Cuentas Obligatorias (Apple Guideline 4.0 & 1.2)**:
+  - Obligar a los invitados de una mesa a registrarse rompe la experiencia en restaurante y viola la política de accesibilidad sin cuenta previa. Emisión de tokens aleatorios efímeros de un solo propósito almacenados con hash SHA-256 en PostgreSQL y protegidos en iOS mediante Keychain (`kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`).
+- [x] **Códigos Compartibles Crockford Base32 y Deep Links Resilientes**:
+  - `ShareCode` normaliza mayúsculas/minúsculas y excluye letras visualmente ambiguas (`I`, `L`, `O`, `U`), soportando esquemas personalizados (`splitbill://join?code=...`), Universal Links (`https://splitbill.app/join?code=...`) y generación pura de QR con CoreImage (`CIQRCodeGenerator`).
+- [x] **Sincronización en Tiempo Real (`@Sse`) + Concurrencia Optimista (`expectedVersion`)**:
+  - El backend emite eventos incrementales mediante Server-Sent Events (`text/event-stream`) respaldados por polling automático versionado en caso de desconexión o EOF del stream.
+  - Los reclamos concurrentes sobre platillos se protegen con locking optimista (`version` entera atómica en PostgreSQL) devolviendo `409 Conflict` cuando dos invitados tocan al mismo tiempo, reconciliando el snapshot sin pisar cambios.
+- [x] **Semántica Aditiva en Dominio Puro (`ADR-002`)**:
+  - `SharedItemClaimState` (`.unassigned`, `.wholeItem`, `.equal`) permite que ítems inicien con 0 reclamantes y se ajusten dinámicamente al sumarse más personas sin alterar el algoritmo estricto de Hamilton (`SplitMode`) ni introducir aritmética flotante.
+- [x] **Seguridad, Privacidad Opt-In y Moderación UGC (Guideline 1.2)**:
+  - Fotografía del recibo desactivada por defecto (`includeImage: false`) y validación server-side por magic bytes JPEG/PNG.
+  - Controles UGC completos: ocultar imagen localmente, reporte tipificado deduplicado por actor con auto-cuarentena atómica (`reportCount >= 3` vía `P2002` + `{ increment: 1 }`), y bloqueo local con salida inmediata y guardas de generación de sesión contra reentrancy.
+
+### Files modified / created:
+- **Backend (`services/api/`)**:
+  - [`services/api/prisma/schema.prisma`](services/api/prisma/schema.prisma) & [`services/api/prisma/migrations/20261112220000_add_shared_collaboration/migration.sql`](services/api/prisma/migrations/20261112220000_add_shared_collaboration/migration.sql)
+  - [`services/api/src/modules/collaboration/dto/collaboration.dto.ts`](services/api/src/modules/collaboration/dto/collaboration.dto.ts)
+  - [`services/api/src/modules/collaboration/guards/session-token.guard.ts`](services/api/src/modules/collaboration/guards/session-token.guard.ts)
+  - [`services/api/src/modules/collaboration/guards/collaboration-rate-limit.guard.ts`](services/api/src/modules/collaboration/guards/collaboration-rate-limit.guard.ts)
+  - [`services/api/src/modules/collaboration/utils/sanitize.util.ts`](services/api/src/modules/collaboration/utils/sanitize.util.ts)
+  - [`services/api/src/modules/collaboration/collaboration.events.ts`](services/api/src/modules/collaboration/collaboration.events.ts)
+  - [`services/api/src/modules/collaboration/collaboration.service.ts`](services/api/src/modules/collaboration/collaboration.service.ts)
+  - [`services/api/src/modules/collaboration/collaboration.controller.ts`](services/api/src/modules/collaboration/collaboration.controller.ts)
+  - [`services/api/src/modules/collaboration/collaboration.module.ts`](services/api/src/modules/collaboration/collaboration.module.ts)
+  - [`services/api/src/modules/collaboration/collaboration.security.spec.ts`](services/api/src/modules/collaboration/collaboration.security.spec.ts)
+  - [`services/api/src/modules/collaboration/collaboration.service.spec.ts`](services/api/src/modules/collaboration/collaboration.service.spec.ts)
+  - [`services/api/src/test/collaboration.adversarial.spec.ts`](services/api/src/test/collaboration.adversarial.spec.ts)
+- **iOS (`apps/SplitBill/`)**:
+  - [`apps/SplitBill/SplitBill/Domain/SharedReceiptModels.swift`](apps/SplitBill/SplitBill/Domain/SharedReceiptModels.swift) & [`apps/SplitBill/SplitBill/Domain/DomainError.swift`](apps/SplitBill/SplitBill/Domain/DomainError.swift)
+  - [`apps/SplitBill/SplitBill-Info.plist`](apps/SplitBill/SplitBill-Info.plist)
+  - [`apps/SplitBill/SplitBill/Infrastructure/Collaboration/CollaborationDTOs.swift`](apps/SplitBill/SplitBill/Infrastructure/Collaboration/CollaborationDTOs.swift)
+  - [`apps/SplitBill/SplitBill/Infrastructure/Collaboration/CollaborationService.swift`](apps/SplitBill/SplitBill/Infrastructure/Collaboration/CollaborationService.swift)
+  - [`apps/SplitBill/SplitBill/Infrastructure/Collaboration/CollaborationSessionStore.swift`](apps/SplitBill/SplitBill/Infrastructure/Collaboration/CollaborationSessionStore.swift)
+  - [`apps/SplitBill/SplitBill/Infrastructure/Collaboration/DeepLinkParser.swift`](apps/SplitBill/SplitBill/Infrastructure/Collaboration/DeepLinkParser.swift)
+  - [`apps/SplitBill/SplitBill/Infrastructure/Collaboration/QRCodeGenerator.swift`](apps/SplitBill/SplitBill/Infrastructure/Collaboration/QRCodeGenerator.swift)
+  - [`apps/SplitBill/SplitBill/UI/State/SharedSessionViewModel.swift`](apps/SplitBill/SplitBill/UI/State/SharedSessionViewModel.swift)
+  - [`apps/SplitBill/SplitBill/UI/Views/ShareReceiptSheet.swift`](apps/SplitBill/SplitBill/UI/Views/ShareReceiptSheet.swift)
+  - [`apps/SplitBill/SplitBill/UI/Views/JoinSharedReceiptSheet.swift`](apps/SplitBill/SplitBill/UI/Views/JoinSharedReceiptSheet.swift)
+  - [`apps/SplitBill/SplitBill/UI/Views/SharedReceiptSessionView.swift`](apps/SplitBill/SplitBill/UI/Views/SharedReceiptSessionView.swift)
+  - [`apps/SplitBill/SplitBill/UI/Views/ReportSessionSheet.swift`](apps/SplitBill/SplitBill/UI/Views/ReportSessionSheet.swift)
+  - [`apps/SplitBill/SplitBill/ContentView.swift`](apps/SplitBill/SplitBill/ContentView.swift) & [`apps/SplitBill/SplitBill/UI/Views/ReceiptWorkspaceView.swift`](apps/SplitBill/SplitBill/UI/Views/ReceiptWorkspaceView.swift)
+  - Tests: `SharedCollaborationDomainTests.swift`, `CollaborationClientTests.swift`, `SharedSessionViewModelTests.swift`, `DeepLinkParserTests.swift`, `CollaborationModerationTests.swift`
+- **Documentation**:
+  - [`docs/product/roadmap.md`](docs/product/roadmap.md), [`docs/architecture/system.md`](docs/architecture/system.md), [`docs/legal/privacy.md`](docs/legal/privacy.md), [`README.md`](README.md), [`LEARNING_LOG.md`](LEARNING_LOG.md)

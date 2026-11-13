@@ -17,7 +17,7 @@
   <img src="https://img.shields.io/badge/iOS-18.0%2B-000000?logo=apple&logoColor=white" alt="iOS 18+">
   <img src="https://img.shields.io/badge/NestJS-10.4-E0234E?logo=nestjs&logoColor=white" alt="NestJS">
   <img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white" alt="PostgreSQL">
-  <img src="https://img.shields.io/badge/Tests-235%20Passing%20(136%20iOS%20+%2099%20API)-34D399?logo=checkmarx&logoColor=white" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-279%20Passing%20(159%20iOS%20+%20120%20API)-34D399?logo=checkmarx&logoColor=white" alt="Tests">
   <img src="https://img.shields.io/badge/Architecture-Clean%20%2F%20ADR--002-3B82F6" alt="Architecture">
   <img src="https://img.shields.io/badge/Dependencies-0%20(Pure%20Apple%20SDK)-8B5CF6" alt="0 Dependencies">
   <a href="LICENSE">
@@ -64,6 +64,7 @@ Most bill-splitting apps rely on binary floating-point (`Double` / `Float`) that
 | **Multi-Provider AI Extraction Proxy** | [`ai-proxy.service.ts`](services/api/src/modules/ai-proxy/ai-proxy.service.ts) & [`HTTPProxyAIReceiptParserService.swift`](apps/SplitBill/SplitBill/Infrastructure/AI/AIReceiptParserService.swift)<br>NestJS gateway with adapter for DeepSeek (JSON mode), local Ollama, and $0 zero-cost heuristic fallback, enforcing integer cents reconciliation. |
 | **Apple Guideline 5.1.2(i) Informed Consent** | [`AIConsentSheet.swift`](apps/SplitBill/SplitBill/UI/Views/AIConsentSheet.swift) & [`AIConsentManager.swift`](apps/SplitBill/SplitBill/Infrastructure/AI/AIConsentManager.swift)<br>Modal consent sheet explaining data minimization, purpose, and revocability before any network extraction payload is sent. |
 | **Cloud Sync & PostgreSQL Invariants** | [`receipts.service.ts`](services/api/src/modules/receipts/receipts.service.ts) & [`schema.prisma`](services/api/prisma/schema.prisma)<br>Production NestJS REST API with PostgreSQL, Prisma ORM, BigInt minor units cents, bearer token auth, and fast-check property testing. |
+| **Live QR Collaboration & UGC Safety** | [`collaboration.service.ts`](services/api/src/modules/collaboration/collaboration.service.ts) & [`SharedSessionViewModel.swift`](apps/SplitBill/SplitBill/UI/State/SharedSessionViewModel.swift)<br>Zero-login anonymous capability tokens, `@Sse` live stream + `expectedVersion` optimistic concurrency (`409`), opt-in-only receipt photo, and Apple Guideline 1.2 moderation/quarantine controls. |
 | **On-Device OCR & Geometric Row Clustering** | [`ReceiptOCRService.swift`](apps/SplitBill/SplitBill/Infrastructure/OCR/ReceiptOCRService.swift) & [`ReceiptOCRModels.swift`](apps/SplitBill/SplitBill/Infrastructure/OCR/ReceiptOCRModels.swift)<br>Transforms normalized Vision bounding boxes (`midY`, `minX`) into logical receipt rows while offloading heavy vision requests from the cooperative thread pool. |
 | **Deterministic Parser & Reconciliation** | [`DeterministicReceiptParser.swift`](apps/SplitBill/SplitBill/Domain/DeterministicReceiptParser.swift) & [`ParsedReceiptReviewDraft.swift`](apps/SplitBill/SplitBill/UI/State/ParsedReceiptReviewDraft.swift)<br>Parses items, unit prices, IVA and tips with regex lookbehind; reconciles $\sum \text{items} + \text{tax} == \text{total}$ in real-time before import. |
 | **Resilient Persistence with Fallback** | [`ReceiptStore.swift`](apps/SplitBill/SplitBill/Infrastructure/Persistence/ReceiptStore.swift) & [`StoredReceipt.swift`](apps/SplitBill/SplitBill/Infrastructure/Persistence/StoredReceipt.swift)<br>Automated SwiftData store with graceful in-memory container fallback preventing launch crashes if disk storage fails. |
@@ -123,23 +124,23 @@ Architectural decisions are tracked in formal **Architecture Decision Records (A
 | **M6.7** | `v1.1.0` | **Visual Receipt Card Exporter (`ImageRenderer`)** — Render a shareable image/card breakdown for WhatsApp / iMessage | ✅ Complete |
 | **M7** | `v1.2.0` | **Local Cloud Backend (Docker Compose)** — NestJS + PostgreSQL containerized with Docker Compose for multi-device sync | ✅ Complete |
 | **M7.5** | `v1.3.0` | **AI Extraction Proxy** — LLM parser proxy via backend with explicit user consent modal | ✅ Complete |
-| **M8** | `v1.4.0` | **Shared Receipt Collaboration** — Real-time sessions via QR / Universal Links | ⏳ Next |
-| **M9** | `v2.0.0` | **Commercial App Store Release** — Production deployment with TestFlight & StoreKit 2 subscriptions | 📋 Planned |
+| **M8** | `v1.4.0` | **Shared Receipt Collaboration** — Real-time sessions via QR / Universal Links | ✅ Complete |
+| **M9** | `v2.0.0` | **Commercial App Store Release** — Production deployment with TestFlight & StoreKit 2 subscriptions | ⏳ Next |
 
 ---
 
 ## 🧪 Testing & Verification
 
-The repository enforces automated verification across both the iOS client and backend services with **235 automated tests**:
+The repository enforces automated verification across both the iOS client and backend services with **279 automated tests**:
 
-- **iOS Swift Testing (136 tests across 18 suites)**:
+- **iOS Swift Testing (159 tests across 23 suites)**:
   - Financial conservation invariants, Hamilton largest remainder tie-breaking.
   - SwiftData persistence, error recovery, and background OCR actor reentrancy.
-  - Apple Guideline 5.1.2(i) AI consent lifecycle and DTO roundtrip integrity.
-- **Backend Jest & Fast-Check (99 tests across 7 suites)**:
+  - Apple Guideline 5.1.2(i) AI consent lifecycle, Deep Link Crockford validation, and Guideline 1.2 UGC moderation controls.
+- **Backend Jest & Fast-Check (120 tests across 10 suites)**:
   - BigInt minor unit cents serialization and PostgreSQL idempotency.
-  - Sliding-window rate limiting (429 Too Many Requests).
-  - Adversarial fuzzing against prompt injection, negative numbers, and malformed JSON.
+  - Optimistic concurrency (`expectedVersion`), SSE state transitions, and auto-quarantine moderation invariants.
+  - Sliding-window rate limiting (`429`) and adversarial fuzzing against prompt injection, malformed images, and XSS/HTML injection.
 
 To run the complete verification suite locally:
 
@@ -152,8 +153,8 @@ cd services/api && npm test
 ```
 
 Every push and pull request automatically triggers parallel verification in GitHub Actions:
-1. **iOS Pipeline (`macos-latest`)**: Swift 6 strict concurrency, boundary checks, and 136 tests.
-2. **Backend Pipeline (`ubuntu-latest`)**: Node 20, NestJS build, and 99 unit/adversarial tests.
+1. **iOS Pipeline (`macos-latest`)**: Swift 6 strict concurrency, boundary checks, and 159 tests.
+2. **Backend Pipeline (`ubuntu-latest`)**: Node 20, NestJS build, and 120 unit/adversarial tests.
 
 ---
 
@@ -170,6 +171,10 @@ Every push and pull request automatically triggers parallel verification in GitH
    open apps/SplitBill/SplitBill.xcodeproj
    ```
 3. Select any iPhone simulator (e.g., iPhone 16 or iPhone 17) and press **Run (`⌘R`)**.
+4. To test incoming collaborative invite links in the iOS Simulator:
+   ```bash
+   xcrun simctl openurl booted "splitbill://join?code=ABCD2345"
+   ```
 
 ### Running Backend API & Local AI Proxy (Docker Compose)
 To run the sync service and multi-provider AI proxy locally:

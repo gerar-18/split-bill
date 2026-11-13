@@ -61,7 +61,7 @@ jobs:
           echo "- **Branch / Ref**: \`$GH_REF\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Triggered by**: \`$GH_EVENT\`" >> $GITHUB_STEP_SUMMARY
           if [ "$JOB_STATUS" = "success" ]; then
-            echo "- **Status**: ✅ All architecture boundaries respected & 136 Swift Tests passed" >> $GITHUB_STEP_SUMMARY
+            echo "- **Status**: ✅ All architecture boundaries respected & Swift Testing suite passed" >> $GITHUB_STEP_SUMMARY
           else
             echo "- **Status**: ❌ iOS Pipeline Failed" >> $GITHUB_STEP_SUMMARY
           fi
