@@ -18,6 +18,7 @@ nonisolated protocol CollaborationStateStoring: Sendable {
 /// Thread-safety is guaranteed because `SecItem*` and `UserDefaults` are documented thread-safe by Apple.
 nonisolated final class KeychainCollaborationStateStore: CollaborationStateStoring, @unchecked Sendable {
     private let defaults: UserDefaults
+    private let lock = NSLock()
     private let keychainService = "com.gerar18.SplitBill.collaboration.tokens"
     private let hiddenImagesKey = "splitbill.collab.hiddenImages"
     private let blockedSessionsKey = "splitbill.collab.blockedSessions"
@@ -67,29 +68,37 @@ nonisolated final class KeychainCollaborationStateStore: CollaborationStateStori
     }
 
     func isImageHidden(forSessionID sessionID: String) -> Bool {
-        let list = defaults.stringArray(forKey: hiddenImagesKey) ?? []
-        return list.contains(sessionID)
+        lock.withLock {
+            let list = defaults.stringArray(forKey: hiddenImagesKey) ?? []
+            return list.contains(sessionID)
+        }
     }
 
     func setImageHidden(_ hidden: Bool, forSessionID sessionID: String) {
-        var set = Set(defaults.stringArray(forKey: hiddenImagesKey) ?? [])
-        if hidden {
-            set.insert(sessionID)
-        } else {
-            set.remove(sessionID)
+        lock.withLock {
+            var set = Set(defaults.stringArray(forKey: hiddenImagesKey) ?? [])
+            if hidden {
+                set.insert(sessionID)
+            } else {
+                set.remove(sessionID)
+            }
+            defaults.set(Array(set), forKey: hiddenImagesKey)
         }
-        defaults.set(Array(set), forKey: hiddenImagesKey)
     }
 
     func isSessionBlocked(sessionIDOrCode: String) -> Bool {
-        let list = defaults.stringArray(forKey: blockedSessionsKey) ?? []
-        return list.contains(sessionIDOrCode.uppercased())
+        lock.withLock {
+            let list = defaults.stringArray(forKey: blockedSessionsKey) ?? []
+            return list.contains(sessionIDOrCode.uppercased())
+        }
     }
 
     func blockSession(sessionIDOrCode: String) {
-        var set = Set(defaults.stringArray(forKey: blockedSessionsKey) ?? [])
-        set.insert(sessionIDOrCode.uppercased())
-        defaults.set(Array(set), forKey: blockedSessionsKey)
+        lock.withLock {
+            var set = Set(defaults.stringArray(forKey: blockedSessionsKey) ?? [])
+            set.insert(sessionIDOrCode.uppercased())
+            defaults.set(Array(set), forKey: blockedSessionsKey)
+        }
     }
 }
 

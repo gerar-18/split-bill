@@ -189,8 +189,7 @@ struct ShareReceiptSheet: View {
             }
 
             Button {
-                dismiss()
-                collaborationViewModel.isShowingLiveSessionSheet = true
+                collaborationViewModel.activeSheet = .live
             } label: {
                 Label("Ver reclamos en tiempo real", systemImage: "list.bullet.rectangle")
             }
@@ -204,6 +203,7 @@ struct ShareReceiptSheet: View {
             } label: {
                 Label("Cerrar sesión compartida", systemImage: "xmark.circle")
             }
+            .disabled(collaborationViewModel.isLoading)
         }
     }
 }

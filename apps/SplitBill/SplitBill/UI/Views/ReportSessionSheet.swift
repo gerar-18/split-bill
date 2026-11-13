@@ -24,12 +24,12 @@ struct ReportSessionSheet: View {
                     TextField("Detalles adicionales (opcional)", text: $note, axis: .vertical)
                         .lineLimit(3...6)
                         .onChange(of: note) { _, newValue in
-                            if newValue.count > 500 {
-                                note = String(newValue.prefix(500))
+                            if newValue.count > 300 {
+                                note = String(newValue.prefix(300))
                             }
                         }
                 } header: {
-                    Text("Detalles")
+                    Text("Detalles (\(note.count)/300)")
                 } footer: {
                     Text("Tu reporte es anónimo. Si una sesión recibe múltiples reportes, el servidor la suspende automáticamente.")
                 }

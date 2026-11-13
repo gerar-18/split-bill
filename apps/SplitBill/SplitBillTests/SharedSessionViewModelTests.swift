@@ -8,6 +8,7 @@ nonisolated final class MockCollaborationService: CollaborationServicing, @unche
     var lastCreateRequest: CreateSharedSessionRequestDTO?
     var snapshotToReturn: CollaborationSnapshotDTO
     var claimResultQueue: [Result<CollaborationSnapshotDTO, CollaborationError>] = []
+    var fetchSnapshotError: CollaborationError?
     var didCloseSession = false
     var didLeaveSession = false
     var lastReportReason: ModerationReportReason?
@@ -79,7 +80,10 @@ nonisolated final class MockCollaborationService: CollaborationServicing, @unche
         sessionToken: String,
         sinceVersion: Int?
     ) async throws(CollaborationError) -> CollaborationSnapshotDTO? {
-        snapshotToReturn
+        if let err = lock.withLock({ fetchSnapshotError }) {
+            throw err
+        }
+        return snapshotToReturn
     }
 
     func toggleClaim(
@@ -212,5 +216,25 @@ struct SharedSessionViewModelTests {
         await vm.toggleClaim(forItemID: itemUUID)
 
         #expect(vm.statusBanner?.contains("sincronizando") == true)
+    }
+
+    @Test("Expired or remotely closed snapshot disables editing immediately")
+    func remoteSessionExpiredDisablesEdits() async throws {
+        let mockService = MockCollaborationService()
+        let stateStore = InMemoryCollaborationStateStore()
+        let vm = SharedSessionViewModel(service: mockService, stateStore: stateStore)
+
+        await vm.joinSession(rawCode: "ABCD2345", displayName: "Ana")
+        #expect(vm.isSessionClosedOrExpired == false)
+
+        mockService.fetchSnapshotError = .sessionExpired
+        await vm.refreshSnapshot()
+
+        #expect(vm.isSessionClosedOrExpired == true)
+        #expect(vm.statusBanner?.contains("expiró") == true)
+
+        let itemUUID = try #require(UUID(uuidString: "22222222-2222-4222-8222-222222222222"))
+        await vm.toggleClaim(forItemID: itemUUID)
+        #expect(vm.errorMessage == "La sesión ya no acepta cambios.")
     }
 }

@@ -7,7 +7,7 @@ struct ReceiptWorkspaceView: View {
     // MARK: - Bindings & State
 
     @Bindable var viewModel: ReceiptEditorViewModel
-    var collaborationViewModel: SharedSessionViewModel = SharedSessionViewModel()
+    @Bindable var collaborationViewModel: SharedSessionViewModel
     @State private var isHistoryPresented = false
     @State private var isAboutPresented = false
     @State private var showNewReceiptConfirmation = false
@@ -136,25 +136,24 @@ struct ReceiptWorkspaceView: View {
             .sheet(isPresented: $viewModel.isShowingSharePreviewSheet) {
                 ReceiptSharePreviewSheet(viewModel: viewModel)
             }
-            .sheet(isPresented: Bindable(collaborationViewModel).isShowingShareSheet) {
-                ShareReceiptSheet(
-                    editorViewModel: viewModel,
-                    collaborationViewModel: collaborationViewModel
-                )
-            }
-            .sheet(isPresented: Bindable(collaborationViewModel).isShowingJoinSheet) {
-                JoinSharedReceiptSheet(collaborationViewModel: collaborationViewModel)
-            }
-            .sheet(isPresented: Bindable(collaborationViewModel).isShowingLiveSessionSheet) {
-                SharedReceiptSessionView(collaborationViewModel: collaborationViewModel)
+            .sheet(item: $collaborationViewModel.activeSheet) { sheet in
+                switch sheet {
+                case .share:
+                    ShareReceiptSheet(
+                        editorViewModel: viewModel,
+                        collaborationViewModel: collaborationViewModel
+                    )
+                case .join:
+                    JoinSharedReceiptSheet(collaborationViewModel: collaborationViewModel)
+                case .live:
+                    SharedReceiptSessionView(collaborationViewModel: collaborationViewModel)
+                }
             }
             .alert(
                 "Cuenta Compartida",
                 isPresented: Binding(
                     get: {
-                        !collaborationViewModel.isShowingShareSheet
-                            && !collaborationViewModel.isShowingJoinSheet
-                            && !collaborationViewModel.isShowingLiveSessionSheet
+                        collaborationViewModel.activeSheet == nil
                             && collaborationViewModel.errorMessage != nil
                     },
                     set: { isPresented in
@@ -217,5 +216,8 @@ struct ReceiptWorkspaceView: View {
     ]
     vm.taxText = "71.20"
 
-    return ReceiptWorkspaceView(viewModel: vm)
+    return ReceiptWorkspaceView(
+        viewModel: vm,
+        collaborationViewModel: SharedSessionViewModel()
+    )
 }

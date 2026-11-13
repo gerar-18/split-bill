@@ -74,6 +74,7 @@ struct JoinSharedReceiptSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancelar") {
+                        collaborationViewModel.prefilledJoinCode = ""
                         dismiss()
                     }
                 }
@@ -81,6 +82,7 @@ struct JoinSharedReceiptSheet: View {
             .onAppear {
                 if codeInput.isEmpty && !collaborationViewModel.prefilledJoinCode.isEmpty {
                     codeInput = collaborationViewModel.prefilledJoinCode
+                    collaborationViewModel.prefilledJoinCode = ""
                 }
             }
         }

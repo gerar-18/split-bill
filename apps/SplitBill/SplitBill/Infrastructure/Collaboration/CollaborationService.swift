@@ -212,6 +212,7 @@ nonisolated final class HTTPCollaborationService: CollaborationServicing, Sendab
             let task = Task {
                 var request = URLRequest(url: url)
                 request.httpMethod = "GET"
+                request.timeoutInterval = 300
                 request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
                 request.setValue(sessionToken, forHTTPHeaderField: "x-session-token")
 

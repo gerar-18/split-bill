@@ -63,7 +63,11 @@ struct SharedReceiptSessionView: View {
                     )
                 }
             }
-            .navigationTitle(collaborationViewModel.activeSnapshot?.receipt.title ?? "Cuenta en Vivo")
+            .navigationTitle(
+                collaborationViewModel.activeSnapshot?.domainStatus == .quarantined
+                    ? "Sesión Suspendida"
+                    : (collaborationViewModel.activeSnapshot?.receipt.title ?? "Cuenta en Vivo")
+            )
             .navigationBarTitleDisplayMode(.inline)
             .refreshable {
                 await collaborationViewModel.refreshSnapshot()
@@ -144,7 +148,7 @@ struct SharedReceiptSessionView: View {
     private func itemsSection(snapshot: CollaborationSnapshotDTO) -> some View {
         Section("Ítems del Recibo") {
             let myID = collaborationViewModel.myParticipantID
-            let isEditable = snapshot.domainStatus == .active
+            let isEditable = snapshot.domainStatus == .active && !collaborationViewModel.isSessionClosedOrExpired
 
             ForEach(collaborationViewModel.domainItems) { item in
                 let isMine = myID.map { item.claimantIDs.contains($0) } ?? false

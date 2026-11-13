@@ -200,7 +200,12 @@ nonisolated struct CollaborationSplitPreview: Equatable, Sendable {
         )
         let splitResult = try SplitEngine.calculateSplit(for: claimedReceipt)
 
-        let grandTotalCents = assignedCents + unclaimedCents + tax.amountInMinorUnits + tip.amountInMinorUnits
+        let (subtotalSum, subtotalOverflow) = assignedCents.addingReportingOverflow(unclaimedCents)
+        let (withTax, taxOverflow) = subtotalSum.addingReportingOverflow(tax.amountInMinorUnits)
+        let (grandTotalCents, tipOverflow) = withTax.addingReportingOverflow(tip.amountInMinorUnits)
+        if subtotalOverflow || taxOverflow || tipOverflow {
+            throw .negativeAmount(assignedCents)
+        }
 
         return CollaborationSplitPreview(
             receiptID: receiptID,

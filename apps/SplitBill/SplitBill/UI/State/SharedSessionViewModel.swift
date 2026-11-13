@@ -2,6 +2,14 @@ import Foundation
 import Observation
 import UIKit
 
+enum CollaborationActiveSheet: String, Identifiable {
+    case share
+    case join
+    case live
+
+    var id: String { rawValue }
+}
+
 /// Presentation state orchestrating live collaborative sessions (Host QR sharing, Guest join,
 /// real-time SSE reconciliation, optimistic claim toggles, and Apple Guideline 1.2 moderation).
 @Observable
@@ -14,12 +22,41 @@ final class SharedSessionViewModel {
     private let stateStore: any CollaborationStateStoring
     private var sseTask: Task<Void, Never>?
     private var pollingTask: Task<Void, Never>?
+    private var sessionGeneration = UUID()
 
     // MARK: - Presentation & Sheet State
 
-    var isShowingShareSheet: Bool = false
-    var isShowingJoinSheet: Bool = false
-    var isShowingLiveSessionSheet: Bool = false
+    var activeSheet: CollaborationActiveSheet?
+    var isShowingShareSheet: Bool {
+        get { activeSheet == .share }
+        set {
+            if newValue {
+                activeSheet = .share
+            } else if activeSheet == .share {
+                activeSheet = nil
+            }
+        }
+    }
+    var isShowingJoinSheet: Bool {
+        get { activeSheet == .join }
+        set {
+            if newValue {
+                activeSheet = .join
+            } else if activeSheet == .join {
+                activeSheet = nil
+            }
+        }
+    }
+    var isShowingLiveSessionSheet: Bool {
+        get { activeSheet == .live }
+        set {
+            if newValue {
+                activeSheet = .live
+            } else if activeSheet == .live {
+                activeSheet = nil
+            }
+        }
+    }
     var isShowingReportSheet: Bool = false
     var prefilledJoinCode: String = ""
 
@@ -30,6 +67,7 @@ final class SharedSessionViewModel {
     private(set) var sessionToken: String?
     private(set) var myParticipantID: UUID?
     private(set) var isHost: Bool = false
+    private(set) var isSessionClosedOrExpired: Bool = false
     private(set) var domainParticipants: [Participant] = []
     private(set) var domainItems: [SharedReceiptLineItem] = []
     private(set) var domainPreview: CollaborationSplitPreview?
@@ -90,6 +128,7 @@ final class SharedSessionViewModel {
         hostDisplayName: String,
         includeImage: Bool
     ) async {
+        guard !isLoading else { return }
         let trimmedHost = hostDisplayName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedHost.isEmpty else {
             errorMessage = "Ingresa tu nombre para identificar al anfitrión."
@@ -174,27 +213,39 @@ final class SharedSessionViewModel {
     }
 
     func closeActiveSession() async {
-        guard let code = activeShareCode, let token = sessionToken, isHost else {
+        guard !isLoading,
+              let code = activeShareCode,
+              let token = sessionToken,
+              isHost else {
             return
         }
+        let expectedCode = code.value
+        let expectedGeneration = sessionGeneration
         isLoading = true
         errorMessage = nil
         do {
             try await service.closeSession(code: code, sessionToken: token)
+            guard sessionGeneration == expectedGeneration,
+                  activeShareCode?.value == expectedCode else {
+                isLoading = false
+                return
+            }
             stateStore.deleteSessionToken(forShareCode: code.value)
             resetSessionState()
-            isShowingShareSheet = false
-            isShowingLiveSessionSheet = false
+            activeSheet = nil
             isLoading = false
         } catch {
             isLoading = false
-            errorMessage = readableError(error)
+            if sessionGeneration == expectedGeneration {
+                errorMessage = readableError(error)
+            }
         }
     }
 
     // MARK: - Guest Join & Live Sync
 
     func joinSession(rawCode: String, displayName: String) async {
+        guard !isLoading else { return }
         let trimmedName = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedName.isEmpty else {
             errorMessage = "Ingresa tu nombre para unirte a la cuenta."
@@ -233,9 +284,9 @@ final class SharedSessionViewModel {
                 isHost: false,
                 snapshot: response.snapshot
             )
+            prefilledJoinCode = ""
             isLoading = false
-            isShowingJoinSheet = false
-            isShowingLiveSessionSheet = true
+            activeSheet = .live
         } catch {
             isLoading = false
             errorMessage = readableError(error)
@@ -249,11 +300,13 @@ final class SharedSessionViewModel {
               let snapshot = activeSnapshot else {
             return
         }
-        guard snapshot.domainStatus == .active else {
+        guard snapshot.domainStatus == .active && !isSessionClosedOrExpired else {
             errorMessage = "La sesión ya no acepta cambios."
             return
         }
 
+        let expectedCode = code.value
+        let expectedGeneration = sessionGeneration
         let itemMatches = domainItems.first(where: { $0.id == itemId })
         let currentlyClaimed = itemMatches?.claimantIDs.contains(myID) ?? false
         let action: ClaimAction = currentlyClaimed ? .unclaim : .claim
@@ -269,37 +322,68 @@ final class SharedSessionViewModel {
                 action: action,
                 expectedVersion: snapshot.version
             )
+            guard sessionGeneration == expectedGeneration,
+                  activeShareCode?.value == expectedCode else {
+                isMutatingClaim = false
+                return
+            }
             applySnapshot(updated)
             isMutatingClaim = false
         } catch CollaborationError.versionConflict {
+            guard sessionGeneration == expectedGeneration,
+                  activeShareCode?.value == expectedCode else {
+                isMutatingClaim = false
+                return
+            }
             // Reconcile automatically with server state and notify user to tap again if needed
             statusBanner = "Otro invitado actualizó la cuenta; sincronizando cambios…"
             await refreshSnapshot()
             isMutatingClaim = false
         } catch {
             isMutatingClaim = false
-            errorMessage = readableError(error)
+            if sessionGeneration == expectedGeneration,
+               activeShareCode?.value == expectedCode {
+                errorMessage = readableError(error)
+            }
         }
     }
 
     func refreshSnapshot() async {
         guard let code = activeShareCode, let token = sessionToken else { return }
         let expectedCode = code.value
+        let expectedGeneration = sessionGeneration
 
         do {
-            if let fresh = try await service.fetchSnapshot(
+            let fresh = try await service.fetchSnapshot(
                 code: code,
                 sessionToken: token,
                 sinceVersion: activeSnapshot?.version
-            ) {
-                guard activeShareCode?.value == expectedCode else { return }
+            )
+            guard sessionGeneration == expectedGeneration,
+                  activeShareCode?.value == expectedCode else {
+                return
+            }
+            if let fresh {
                 applySnapshot(fresh)
             }
         } catch CollaborationError.sessionExpired {
+            guard sessionGeneration == expectedGeneration,
+                  activeShareCode?.value == expectedCode else { return }
+            isSessionClosedOrExpired = true
             statusBanner = "La sesión expiró o fue cerrada por el anfitrión."
             stopStreams()
         } catch CollaborationError.sessionQuarantined {
+            guard sessionGeneration == expectedGeneration,
+                  activeShareCode?.value == expectedCode else { return }
+            isSessionClosedOrExpired = true
+            isImageHiddenLocally = true
             statusBanner = "Sesión bloqueada por reportes de moderación."
+            stopStreams()
+        } catch CollaborationError.unauthorized, CollaborationError.sessionNotFound {
+            guard sessionGeneration == expectedGeneration,
+                  activeShareCode?.value == expectedCode else { return }
+            isSessionClosedOrExpired = true
+            statusBanner = "La sesión ya no está disponible."
             stopStreams()
         } catch {
             // Transient fetch failure should not interrupt active screen
@@ -316,7 +400,11 @@ final class SharedSessionViewModel {
     }
 
     func submitReport(reason: ModerationReportReason, note: String?) async {
-        guard let code = activeShareCode, let token = sessionToken else { return }
+        guard !isLoading,
+              let code = activeShareCode,
+              let token = sessionToken else { return }
+        let expectedCode = code.value
+        let expectedGeneration = sessionGeneration
         isLoading = true
         errorMessage = nil
         do {
@@ -326,29 +414,38 @@ final class SharedSessionViewModel {
                 reason: reason,
                 note: note
             )
+            guard sessionGeneration == expectedGeneration,
+                  activeShareCode?.value == expectedCode else {
+                isLoading = false
+                return
+            }
             isLoading = false
             isShowingReportSheet = false
             if result.quarantined {
                 statusBanner = "La sesión fue puesta en cuarentena por reportes."
                 isImageHiddenLocally = true
+                isSessionClosedOrExpired = true
                 await refreshSnapshot()
             } else {
                 statusBanner = "Reporte enviado. Gracias por mantener SplitBill seguro."
             }
         } catch {
             isLoading = false
-            errorMessage = readableError(error)
+            if sessionGeneration == expectedGeneration {
+                errorMessage = readableError(error)
+            }
         }
     }
 
     func blockAndLeaveSession() async {
         guard let code = activeShareCode else {
             resetSessionState()
-            isShowingLiveSessionSheet = false
+            activeSheet = nil
             return
         }
         let sessionId = activeSnapshot?.sessionId
         let token = sessionToken
+        let wasHost = isHost
 
         if let sessionId {
             stateStore.blockSession(sessionIDOrCode: sessionId)
@@ -356,13 +453,15 @@ final class SharedSessionViewModel {
         stateStore.blockSession(sessionIDOrCode: code.value)
         stateStore.deleteSessionToken(forShareCode: code.value)
 
-        if let token, !isHost {
+        // Reset local state and stop background streams immediately before awaiting network
+        // so in-flight SSE/claim tasks can never resurrect the blocked session.
+        resetSessionState()
+        isShowingReportSheet = false
+        activeSheet = nil
+
+        if let token, !wasHost {
             try? await service.leaveSession(code: code, sessionToken: token)
         }
-
-        resetSessionState()
-        isShowingLiveSessionSheet = false
-        isShowingShareSheet = false
     }
 
     func stopStreams() {
@@ -400,10 +499,12 @@ final class SharedSessionViewModel {
         isHost: Bool,
         snapshot: CollaborationSnapshotDTO
     ) {
+        self.sessionGeneration = UUID()
         self.activeShareCode = code
         self.sessionToken = token
         self.myParticipantID = UUID(uuidString: participantIDString)
         self.isHost = isHost
+        self.isSessionClosedOrExpired = snapshot.domainStatus != .active
         self.stateStore.saveSessionToken(token, forShareCode: code.value)
         self.isImageHiddenLocally = stateStore.isImageHidden(forSessionID: snapshot.sessionId)
         applySnapshot(snapshot)
@@ -416,9 +517,13 @@ final class SharedSessionViewModel {
             self.isImageHiddenLocally = true
         }
         if snapshot.domainStatus == .quarantined {
+            isSessionClosedOrExpired = true
             statusBanner = "Contenido oculto: sesión puesta en cuarentena."
-        } else if snapshot.domainStatus == .closed {
+        } else if snapshot.domainStatus == .closed || snapshot.domainStatus == .expired {
+            isSessionClosedOrExpired = true
             statusBanner = "El anfitrión cerró esta sesión compartida."
+        } else {
+            isSessionClosedOrExpired = false
         }
 
         do {
@@ -434,20 +539,27 @@ final class SharedSessionViewModel {
     private func startLiveSyncLoop(for code: ShareCode, token: String) {
         stopStreams()
         let expectedCode = code.value
+        let expectedGeneration = sessionGeneration
 
         sseTask = Task { [weak self] in
             guard let self else { return }
             let stream = self.service.streamEvents(code: code, sessionToken: token)
+            var terminatedByStatus = false
             do {
                 for try await event in stream {
                     if Task.isCancelled { break }
-                    guard self.activeShareCode?.value == expectedCode else { break }
+                    guard self.sessionGeneration == expectedGeneration,
+                          self.activeShareCode?.value == expectedCode else { break }
 
                     if event.eventType == "session_closed" {
+                        terminatedByStatus = true
+                        self.isSessionClosedOrExpired = true
                         self.statusBanner = "El anfitrión cerró esta sesión."
                         await self.refreshSnapshot()
                         break
                     } else if event.eventType == "session_quarantined" {
+                        terminatedByStatus = true
+                        self.isSessionClosedOrExpired = true
                         self.isImageHiddenLocally = true
                         self.statusBanner = "Sesión bloqueada por reportes de moderación."
                         await self.refreshSnapshot()
@@ -456,22 +568,36 @@ final class SharedSessionViewModel {
                         await self.refreshSnapshot()
                     }
                 }
+                // If SSE closed cleanly (EOF/proxy timeout) without a terminal status, seamlessly
+                // fall back to lightweight versioned polling.
+                if !terminatedByStatus && !Task.isCancelled &&
+                    self.sessionGeneration == expectedGeneration &&
+                    self.activeShareCode?.value == expectedCode &&
+                    !self.isSessionClosedOrExpired {
+                    self.startFallbackPolling(for: code, generation: expectedGeneration)
+                }
             } catch {
-                // SSE dropped — lightweight versioned fallback poll catches up gracefully
-                if !Task.isCancelled && self.activeShareCode?.value == expectedCode {
-                    self.startFallbackPolling(for: code)
+                if !terminatedByStatus && !Task.isCancelled &&
+                    self.sessionGeneration == expectedGeneration &&
+                    self.activeShareCode?.value == expectedCode &&
+                    !self.isSessionClosedOrExpired {
+                    self.startFallbackPolling(for: code, generation: expectedGeneration)
                 }
             }
         }
     }
 
-    private func startFallbackPolling(for code: ShareCode) {
+    private func startFallbackPolling(for code: ShareCode, generation: UUID) {
         pollingTask?.cancel()
         let expectedCode = code.value
         pollingTask = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(5))
-                guard let self, !Task.isCancelled, self.activeShareCode?.value == expectedCode else { break }
+                guard let self,
+                      !Task.isCancelled,
+                      self.sessionGeneration == generation,
+                      self.activeShareCode?.value == expectedCode,
+                      !self.isSessionClosedOrExpired else { break }
                 await self.refreshSnapshot()
             }
         }
@@ -479,15 +605,18 @@ final class SharedSessionViewModel {
 
     private func resetSessionState() {
         stopStreams()
+        sessionGeneration = UUID()
         activeSnapshot = nil
         activeShareCode = nil
         sessionToken = nil
         myParticipantID = nil
         isHost = false
+        isSessionClosedOrExpired = false
         domainParticipants = []
         domainItems = []
         domainPreview = nil
         isImageHiddenLocally = false
+        prefilledJoinCode = ""
         statusBanner = nil
     }
 
