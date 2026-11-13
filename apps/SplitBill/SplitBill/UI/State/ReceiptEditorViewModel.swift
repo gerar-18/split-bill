@@ -894,6 +894,12 @@ final class ReceiptEditorViewModel {
             return "Los porcentajes deben sumar exactamente 100% (actual: \(total)%)."
         case .invalidShareValue(let value):
             return "Cada porción o porcentaje debe ser mayor a 0 (actual: \(value))."
+        case .invalidShareCode:
+            return "El código para compartir debe tener 8 caracteres válidos."
+        case .sessionExpired:
+            return "La sesión compartida ha expirado o fue cerrada."
+        case .versionConflict:
+            return "La sesión se actualizó en otro dispositivo; sincronizando cambios."
         }
     }
 }

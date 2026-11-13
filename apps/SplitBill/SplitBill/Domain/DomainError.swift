@@ -12,4 +12,7 @@ nonisolated enum DomainError: Error, Equatable, Sendable {
     case unknownParticipant(UUID)
     case invalidPercentageTotal(Int)
     case invalidShareValue(Int)
+    case invalidShareCode
+    case sessionExpired
+    case versionConflict
 }
