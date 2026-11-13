@@ -36,6 +36,7 @@ model Receipt {
 
   items           ReceiptItem[]
   participants    ReceiptParticipant[]
+  sharedSession   SharedSession?
 
   @@index([ownerId])
   @@index([clientUpdatedAt])
@@ -49,15 +50,92 @@ model ReceiptItem {
   name            String
   quantity        Int            @default(1)
   priceCents      BigInt         // Centavos
+  claims          ItemClaim[]
 
+  @@index([receiptId])
   @@map("receipt_items")
 }
 
 model ReceiptParticipant {
-  id              String         @id @default(uuid())
-  receiptId       String
-  receipt         Receipt        @relation(fields: [receiptId], references: [id], onDelete: Cascade)
-  name            String
+  id                 String              @id @default(uuid())
+  receiptId          String
+  receipt            Receipt             @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  name               String
+  claims             ItemClaim[]
+  sharedParticipants SharedParticipant[]
 
+  @@index([receiptId])
   @@map("receipt_participants")
+}
+
+enum SharedSessionStatus {
+  ACTIVE
+  CLOSED
+  QUARANTINED
+}
+
+model ItemClaim {
+  id            String             @id @default(uuid())
+  itemId        String
+  item          ReceiptItem        @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  participantId String
+  participant   ReceiptParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  createdAt     DateTime           @default(now()) @db.Timestamptz(3)
+
+  @@unique([itemId, participantId])
+  @@index([participantId])
+  @@map("item_claims")
+}
+
+model SharedSession {
+  id                      String               @id @default(uuid())
+  shareCode               String               @unique
+  receiptId               String               @unique
+  receipt                 Receipt              @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  hostTokenHash           String
+  status                  SharedSessionStatus  @default(ACTIVE)
+  version                 Int                  @default(1)
+  includeImage            Boolean              @default(false)
+  imageHiddenByModeration Boolean              @default(false)
+  imageBase64OptIn        String?
+  reportCount             Int                  @default(0)
+  expiresAt               DateTime             @db.Timestamptz(3)
+  createdAt               DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt               DateTime             @updatedAt @db.Timestamptz(3)
+
+  sharedParticipants      SharedParticipant[]
+  reports                 SessionReport[]
+
+  @@index([expiresAt])
+  @@map("shared_sessions")
+}
+
+model SharedParticipant {
+  id             String             @id @default(uuid())
+  sessionId      String
+  session        SharedSession      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  participantId  String
+  participant    ReceiptParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  displayName    String
+  guestTokenHash String             @unique
+  isHost         Boolean            @default(false)
+  revokedAt      DateTime?          @db.Timestamptz(3)
+  joinedAt       DateTime           @default(now()) @db.Timestamptz(3)
+
+  @@index([sessionId])
+  @@index([participantId])
+  @@map("shared_participants")
+}
+
+model SessionReport {
+  id           String        @id @default(uuid())
+  sessionId    String
+  session      SharedSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  reporterHash String
+  reason       String
+  note         String?
+  createdAt    DateTime      @default(now()) @db.Timestamptz(3)
+
+  @@unique([sessionId, reporterHash])
+  @@map("session_reports")
 }
