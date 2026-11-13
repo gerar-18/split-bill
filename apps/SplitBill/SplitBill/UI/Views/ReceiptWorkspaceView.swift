@@ -7,6 +7,7 @@ struct ReceiptWorkspaceView: View {
     // MARK: - Bindings & State
 
     @Bindable var viewModel: ReceiptEditorViewModel
+    var collaborationViewModel: SharedSessionViewModel = SharedSessionViewModel()
     @State private var isHistoryPresented = false
     @State private var isAboutPresented = false
     @State private var showNewReceiptConfirmation = false
@@ -81,8 +82,24 @@ struct ReceiptWorkspaceView: View {
                 }
 
                 ToolbarItemGroup(placement: .topBarTrailing) {
-                    if viewModel.splitResult != nil && !viewModel.items.isEmpty {
-                        Menu {
+                    Menu {
+                        if !viewModel.items.isEmpty {
+                            Button {
+                                collaborationViewModel.isShowingShareSheet = true
+                            } label: {
+                                Label("Compartir en Vivo (QR)", systemImage: "qrcode")
+                            }
+                        }
+
+                        Button {
+                            collaborationViewModel.openJoinFlow()
+                        } label: {
+                            Label("Unirse con Código", systemImage: "person.badge.plus")
+                        }
+
+                        if viewModel.splitResult != nil && !viewModel.items.isEmpty {
+                            Divider()
+
                             Button {
                                 viewModel.isShowingSharePreviewSheet = true
                             } label: {
@@ -92,11 +109,11 @@ struct ReceiptWorkspaceView: View {
                             ShareLink(item: viewModel.shareableSummaryText) {
                                 Label("Resumen en Texto", systemImage: "doc.plaintext")
                             }
-                        } label: {
-                            Image(systemName: "square.and.arrow.up")
                         }
-                        .accessibilityLabel("Opciones para compartir la cuenta")
+                    } label: {
+                        Image(systemName: "square.and.arrow.up")
                     }
+                    .accessibilityLabel("Opciones para compartir y colaborar")
 
                     Button {
                         if !viewModel.participants.isEmpty || !viewModel.items.isEmpty || !viewModel.receiptTitle.isEmpty || viewModel.hasReceiptImage {
@@ -118,6 +135,12 @@ struct ReceiptWorkspaceView: View {
             }
             .sheet(isPresented: $viewModel.isShowingSharePreviewSheet) {
                 ReceiptSharePreviewSheet(viewModel: viewModel)
+            }
+            .sheet(isPresented: Bindable(collaborationViewModel).isShowingShareSheet) {
+                ShareReceiptSheet(
+                    editorViewModel: viewModel,
+                    collaborationViewModel: collaborationViewModel
+                )
             }
             .confirmationDialog(
                 "¿Iniciar nueva cuenta?",
