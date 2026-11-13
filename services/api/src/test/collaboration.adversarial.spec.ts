@@ -26,6 +26,7 @@ import {
 import { CollaborationRateLimitGuard } from '../modules/collaboration/guards/collaboration-rate-limit.guard';
 import { SessionTokenGuard } from '../modules/collaboration/guards/session-token.guard';
 import {
+  isValidImageBase64,
   sanitizeUserText,
   sha256Hex,
 } from '../modules/collaboration/utils/sanitize.util';
@@ -106,7 +107,11 @@ describe('Adversarial Red-Team Suite — M8 Shared Collaboration', () => {
         }),
         update: jest.fn().mockImplementation(({ data }) => {
           if (data.status) status = data.status;
-          if (typeof data.reportCount === 'number') reportCount = data.reportCount;
+          if (typeof data.reportCount === 'number') {
+            reportCount = data.reportCount;
+          } else if (typeof data.reportCount === 'object' && data.reportCount?.increment) {
+            reportCount += data.reportCount.increment;
+          }
           if (data.imageBase64OptIn !== undefined) {
             imageBase64OptIn = data.imageBase64OptIn;
           }
@@ -453,5 +458,95 @@ describe('Adversarial Red-Team Suite — M8 Shared Collaboration', () => {
       expect(guard.canActivate(reqCtx)).toBe(true);
     }
     expect(() => guard.canActivate(reqCtx)).toThrow(HttpException);
+  });
+
+  it('ignores spoofed X-Forwarded-For headers and rejects disguised base64 XSS image payloads', async () => {
+    const guard = new CollaborationRateLimitGuard(
+      { getAllAndOverride: jest.fn().mockReturnValue(2) } as unknown as Reflector,
+      { get: jest.fn() } as unknown as ConfigService,
+    );
+    const makeSpoofedCtx = (spoofedIp: string) =>
+      ({
+        switchToHttp: () => ({
+          getRequest: () => ({
+            ip: '198.51.100.10',
+            headers: { 'x-forwarded-for': spoofedIp },
+            route: { path: '/v1/shared-sessions/:code/join' },
+          }),
+        }),
+        getHandler: () => ({}),
+        getClass: () => ({}),
+      }) as unknown as ExecutionContext;
+
+    expect(guard.canActivate(makeSpoofedCtx('1.1.1.1'))).toBe(true);
+    expect(guard.canActivate(makeSpoofedCtx('2.2.2.2'))).toBe(true);
+    expect(() => guard.canActivate(makeSpoofedCtx('3.3.3.3'))).toThrow(HttpException);
+
+    // Image magic-byte check blocks HTML/SVG disguised as base64 while permitting valid JPEG/PNG
+    const fakeSvgBase64 = Buffer.from('<svg onload=alert(1)>').toString('base64');
+    const validJpegBase64 = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]).toString('base64');
+    expect(isValidImageBase64(fakeSvgBase64)).toBe(false);
+    expect(isValidImageBase64(validJpegBase64)).toBe(true);
+  });
+
+  it('prevents SSE teardown race from deleting a newly active channel and rejects duplicate item UUIDs', async () => {
+    const events = new CollaborationEventsService();
+    const received: string[] = [];
+
+    const sub1 = events.subscribe('ABCD2345').subscribe((ev) => {
+      received.push(`sub1:${ev.type}`);
+    });
+    // Closing session tears down channel 1
+    events.emit('ABCD2345', {
+      shareCode: 'ABCD2345',
+      version: 2,
+      status: 'CLOSED',
+      eventType: 'session_closed',
+    });
+
+    // New subscriber creates channel 2 before sub1 unsubscribes explicitly
+    const sub2 = events.subscribe('ABCD2345').subscribe((ev) => {
+      received.push(`sub2:${ev.type}`);
+    });
+    sub1.unsubscribe();
+
+    events.emit('ABCD2345', {
+      shareCode: 'ABCD2345',
+      version: 3,
+      status: 'ACTIVE',
+      eventType: 'snapshot_updated',
+    });
+    sub2.unsubscribe();
+
+    expect(received).toContain('sub2:snapshot_updated');
+
+    const { prisma } = buildAtomicConcurrencyPrisma();
+    const service = new CollaborationService(
+      prisma,
+      new ReceiptsService(prisma),
+      events,
+    );
+    const dupId = '11111111-1111-4111-8111-111111111111';
+    await expect(
+      service.createSession({
+        hostDisplayName: 'Gera',
+        receipt: {
+          title: 'Dup Items',
+          date: '2026-11-12T20:00:00.000Z',
+          currency: 'USD',
+          subtotalCents: 2000,
+          taxCents: 0,
+          tipCents: 0,
+          totalCents: 2000,
+          clientCreatedAt: '2026-11-12T20:00:00.000Z',
+          clientUpdatedAt: '2026-11-12T20:00:00.000Z',
+          items: [
+            { id: dupId, name: 'A', quantity: 1, priceCents: 1000 },
+            { id: dupId, name: 'B', quantity: 1, priceCents: 1000 },
+          ],
+          participants: [],
+        },
+      }),
+    ).rejects.toThrow(BadRequestException);
   });
 });

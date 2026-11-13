@@ -29,17 +29,12 @@ import {
   CollaborationActor,
   SessionTokenGuard,
 } from './guards/session-token.guard';
-import { CollaborationEventsService } from './collaboration.events';
 import { CollaborationService } from './collaboration.service';
-import { normalizeShareCode } from './utils/sanitize.util';
 
 @Controller('v1/shared-sessions')
 @UseGuards(CollaborationRateLimitGuard)
 export class CollaborationController {
-  constructor(
-    private readonly collaborationService: CollaborationService,
-    private readonly eventsService: CollaborationEventsService,
-  ) {}
+  constructor(private readonly collaborationService: CollaborationService) {}
 
   @Post()
   @CollabRateLimit(15)
@@ -71,8 +66,8 @@ export class CollaborationController {
 
   @Sse(':code/events')
   @UseGuards(SessionTokenGuard)
-  streamEvents(@Param('code') code: string): Observable<MessageEvent> {
-    return this.eventsService.subscribe(normalizeShareCode(code));
+  streamEvents(@Param('code') code: string): Promise<Observable<MessageEvent>> {
+    return this.collaborationService.subscribeToEvents(code);
   }
 
   @Post(':code/claims')

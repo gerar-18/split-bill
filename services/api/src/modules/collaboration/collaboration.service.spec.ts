@@ -108,9 +108,13 @@ describe('CollaborationService & CollaborationEventsService', () => {
           sessionState = {
             ...sessionState,
             ...data,
+            reportCount:
+              typeof data.reportCount === 'object' && data.reportCount?.increment
+                ? sessionState.reportCount + data.reportCount.increment
+                : (data.reportCount ?? sessionState.reportCount),
             version:
-              typeof data.version === 'object'
-                ? sessionState.version + 1
+              typeof data.version === 'object' && data.version?.increment
+                ? sessionState.version + data.version.increment
                 : (data.version ?? sessionState.version),
           };
           return Promise.resolve(sessionState);

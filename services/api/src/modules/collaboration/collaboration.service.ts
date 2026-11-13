@@ -4,9 +4,11 @@ import {
   ForbiddenException,
   GoneException,
   Injectable,
+  MessageEvent,
   NotFoundException,
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
+import { Observable } from 'rxjs';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ReceiptsService } from '../receipts/receipts.service';
 import {
@@ -20,6 +22,7 @@ import { CollaborationEventsService } from './collaboration.events';
 import {
   generateCapabilityToken,
   generateShareCode,
+  isValidImageBase64,
   isValidShareCode,
   normalizeShareCode,
   sanitizeUserText,
@@ -28,6 +31,7 @@ import {
 
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 export const AUTO_QUARANTINE_THRESHOLD = 3;
+export const MAX_SESSION_PARTICIPANTS = 50;
 
 export interface CollaborationSnapshotDto {
   sessionId: string;
@@ -90,25 +94,48 @@ export class CollaborationService {
       );
     }
 
+    const seenItemIds = new Set<string>();
     const sanitizedItems = dto.receipt.items.map((item) => {
+      if (seenItemIds.has(item.id)) {
+        throw new BadRequestException(`Duplicate item id '${item.id}'`);
+      }
+      seenItemIds.add(item.id);
       const cleanName = sanitizeUserText(item.name, 255);
       if (!cleanName) {
         throw new BadRequestException(
           `Item '${item.id}' name cannot be empty after sanitization`,
         );
       }
-      return { ...item, name: cleanName };
+      // Allocate server-owned UUIDs so synced M5 receipts or re-shared sessions never collide on PKs
+      return { ...item, id: randomUUID(), name: cleanName };
     });
 
+    const seenParticipantIds = new Set<string>();
     const sanitizedParticipants = dto.receipt.participants.map((p) => {
+      if (seenParticipantIds.has(p.id)) {
+        throw new BadRequestException(`Duplicate participant id '${p.id}'`);
+      }
+      seenParticipantIds.add(p.id);
       const cleanName = sanitizeUserText(p.name, 60);
       if (!cleanName) {
         throw new BadRequestException(
           `Participant '${p.id}' name cannot be empty after sanitization`,
         );
       }
-      return { ...p, name: cleanName };
+      return { id: randomUUID(), name: cleanName };
     });
+
+    // Privacy-first: store image ONLY when explicit opt-in flag is true and magic bytes verify as JPEG/PNG
+    let storedImage: string | null = null;
+    const includeImage = Boolean(dto.includeImage && dto.imageBase64OptIn);
+    if (includeImage && dto.imageBase64OptIn) {
+      if (!isValidImageBase64(dto.imageBase64OptIn)) {
+        throw new BadRequestException(
+          'Opt-in image must be a valid base64-encoded JPEG or PNG payload',
+        );
+      }
+      storedImage = dto.imageBase64OptIn.trim();
+    }
 
     const receiptId = randomUUID();
     const matchedHostParticipant = sanitizedParticipants.find(
@@ -120,13 +147,15 @@ export class CollaborationService {
     const hostTokenHash = sha256Hex(hostToken);
     const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
 
-    // Privacy-first: store image ONLY when explicit opt-in flag is true
-    const includeImage = Boolean(dto.includeImage && dto.imageBase64OptIn);
-    const storedImage = includeImage ? dto.imageBase64OptIn ?? null : null;
-
     const participantsToCreate = matchedHostParticipant
       ? sanitizedParticipants
       : [...sanitizedParticipants, { id: hostParticipantId, name: cleanHostName }];
+
+    if (participantsToCreate.length > MAX_SESSION_PARTICIPANTS) {
+      throw new BadRequestException(
+        `Shared sessions support at most ${MAX_SESSION_PARTICIPANTS} participants`,
+      );
+    }
 
     await this.prisma.$transaction(async (tx) => {
       await tx.receipt.create({
@@ -214,11 +243,20 @@ export class CollaborationService {
 
     const session = await this.prisma.sharedSession.findUnique({
       where: { shareCode },
+      include: {
+        sharedParticipants: { where: { revokedAt: null } },
+      },
     });
     if (!session) {
       throw new NotFoundException(`Shared session '${shareCode}' not found`);
     }
     this.assertSessionJoinable(session);
+
+    if ((session.sharedParticipants?.length ?? 0) >= MAX_SESSION_PARTICIPANTS) {
+      throw new ForbiddenException(
+        `Shared session has reached the maximum limit of ${MAX_SESSION_PARTICIPANTS} participants`,
+      );
+    }
 
     const guestToken = generateCapabilityToken();
     const guestTokenHash = sha256Hex(guestToken);
@@ -284,6 +322,44 @@ export class CollaborationService {
       };
     }
     return snapshot;
+  }
+
+  async subscribeToEvents(rawCode: string): Promise<Observable<MessageEvent>> {
+    const shareCode = this.assertValidCode(rawCode);
+    const session = await this.prisma.sharedSession.findUnique({
+      where: { shareCode },
+      select: { version: true, status: true, expiresAt: true },
+    });
+    if (!session) {
+      throw new NotFoundException(`Shared session '${shareCode}' not found`);
+    }
+    if (session.expiresAt <= new Date()) {
+      throw new GoneException('Shared session has expired');
+    }
+
+    const initialEvent =
+      session.status === 'QUARANTINED'
+        ? {
+            shareCode,
+            version: session.version,
+            status: 'QUARANTINED' as const,
+            eventType: 'session_quarantined' as const,
+          }
+        : session.status === 'CLOSED'
+          ? {
+              shareCode,
+              version: session.version,
+              status: 'CLOSED' as const,
+              eventType: 'session_closed' as const,
+            }
+          : {
+              shareCode,
+              version: session.version,
+              status: 'ACTIVE' as const,
+              eventType: 'snapshot_updated' as const,
+            };
+
+    return this.eventsService.subscribe(shareCode, initialEvent);
   }
 
   async toggleClaim(
@@ -382,79 +458,111 @@ export class CollaborationService {
     const cleanNote = dto.note ? sanitizeUserText(dto.note, 300) : null;
     const reporterHash = sha256Hex(`${actor.sessionId}:${actor.tokenHash}`);
 
-    const outcome = await this.prisma.$transaction(async (tx) => {
-      const existing = await tx.sessionReport.findUnique({
-        where: {
-          sessionId_reporterHash: {
+    let outcome: {
+      reported: boolean;
+      quarantined: boolean;
+      reportCount: number;
+      version: number;
+      changed: boolean;
+    };
+
+    try {
+      outcome = await this.prisma.$transaction(async (tx) => {
+        const existing = await tx.sessionReport.findUnique({
+          where: {
+            sessionId_reporterHash: {
+              sessionId: actor.sessionId,
+              reporterHash,
+            },
+          },
+        });
+
+        const currentSession = await tx.sharedSession.findUnique({
+          where: { id: actor.sessionId },
+        });
+        if (!currentSession) {
+          throw new NotFoundException('Shared session not found');
+        }
+
+        if (existing) {
+          return {
+            reported: true,
+            quarantined: currentSession.status === 'QUARANTINED',
+            reportCount: currentSession.reportCount,
+            version: currentSession.version,
+            changed: false,
+          };
+        }
+
+        await tx.sessionReport.create({
+          data: {
             sessionId: actor.sessionId,
             reporterHash,
+            reason: dto.reason,
+            note: cleanNote,
           },
-        },
-      });
+        });
 
-      const currentSession = await tx.sharedSession.findUnique({
-        where: { id: actor.sessionId },
-      });
-      if (!currentSession) {
-        throw new NotFoundException('Shared session not found');
-      }
+        // Atomic SQL increment avoids lost updates under concurrent READ COMMITTED transactions
+        let updated = await tx.sharedSession.update({
+          where: { id: actor.sessionId },
+          data: {
+            reportCount: { increment: 1 },
+            version: { increment: 1 },
+          },
+        });
 
-      if (existing) {
+        if (
+          updated.reportCount >= AUTO_QUARANTINE_THRESHOLD &&
+          updated.status !== 'QUARANTINED'
+        ) {
+          updated = await tx.sharedSession.update({
+            where: { id: actor.sessionId },
+            data: {
+              status: 'QUARANTINED',
+              imageHiddenByModeration: true,
+              includeImage: false,
+              imageBase64OptIn: null,
+            },
+          });
+        }
+
+        return {
+          reported: true,
+          quarantined: updated.status === 'QUARANTINED',
+          reportCount: updated.reportCount,
+          version: updated.version,
+          changed: true,
+        };
+      });
+    } catch (error: any) {
+      // Handle concurrent duplicate report race (`@@unique([sessionId, reporterHash])`) idempotently
+      if (error?.code === 'P2002') {
+        const currentSession = await this.prisma.sharedSession.findUnique({
+          where: { id: actor.sessionId },
+        });
+        if (!currentSession) {
+          throw new NotFoundException('Shared session not found');
+        }
         return {
           reported: true,
           quarantined: currentSession.status === 'QUARANTINED',
           reportCount: currentSession.reportCount,
-          version: currentSession.version,
-          newlyQuarantined: false,
         };
       }
+      throw error;
+    }
 
-      await tx.sessionReport.create({
-        data: {
-          sessionId: actor.sessionId,
-          reporterHash,
-          reason: dto.reason,
-          note: cleanNote,
-        },
+    if (outcome.changed) {
+      this.eventsService.emit(shareCode, {
+        shareCode,
+        version: outcome.version,
+        status: outcome.quarantined ? 'QUARANTINED' : 'ACTIVE',
+        eventType: outcome.quarantined
+          ? 'session_quarantined'
+          : 'snapshot_updated',
       });
-
-      const nextCount = currentSession.reportCount + 1;
-      const shouldQuarantine = nextCount >= AUTO_QUARANTINE_THRESHOLD;
-
-      const updated = await tx.sharedSession.update({
-        where: { id: actor.sessionId },
-        data: {
-          reportCount: nextCount,
-          version: { increment: 1 },
-          ...(shouldQuarantine
-            ? {
-                status: 'QUARANTINED',
-                imageHiddenByModeration: true,
-                includeImage: false,
-                imageBase64OptIn: null,
-              }
-            : {}),
-        },
-      });
-
-      return {
-        reported: true,
-        quarantined: updated.status === 'QUARANTINED',
-        reportCount: updated.reportCount,
-        version: updated.version,
-        newlyQuarantined:
-          shouldQuarantine && currentSession.status !== 'QUARANTINED',
-      };
-    });
-
-    this.eventsService.emit(shareCode, {
-      shareCode,
-      version: outcome.version,
-      status: outcome.quarantined ? 'QUARANTINED' : 'ACTIVE',
-      eventType: outcome.quarantined
-        ? 'session_quarantined'
-        : 'snapshot_updated',
-    });
+    }
 
     return {
       reported: outcome.reported,
@@ -468,6 +576,11 @@ export class CollaborationService {
     actor: CollaborationActor,
   ): Promise<{ left: boolean }> {
     this.assertValidCode(rawCode);
+    if (actor.isHost) {
+      throw new BadRequestException(
+        'Session host cannot leave; close the shared session instead',
+      );
+    }
     await this.prisma.sharedParticipant.update({
       where: { id: actor.sharedParticipantId },
       data: { revokedAt: new Date() },
@@ -483,6 +596,19 @@ export class CollaborationService {
     if (!actor.isHost) {
       throw new ForbiddenException(
         'Only the session host can close a shared receipt',
+      );
+    }
+
+    const existing = await this.prisma.sharedSession.findUnique({
+      where: { id: actor.sessionId },
+      select: { status: true },
+    });
+    if (!existing) {
+      throw new NotFoundException('Shared session not found');
+    }
+    if (existing.status === 'QUARANTINED') {
+      throw new ForbiddenException(
+        'Quarantined sessions cannot be closed by the host',
       );
     }
 
@@ -535,6 +661,16 @@ export class CollaborationService {
     expiresAt: Date;
   }): void {
     this.assertSessionJoinable(session);
+  }
+
+  private toSafeInt(value: bigint): number {
+    if (
+      value > BigInt(Number.MAX_SAFE_INTEGER) ||
+      value < BigInt(Number.MIN_SAFE_INTEGER)
+    ) {
+      throw new BadRequestException('Monetary amount exceeds safe integer bounds');
+    }
+    return Number(value);
   }
 
   private async loadSnapshotByCode(
@@ -590,15 +726,15 @@ export class CollaborationService {
         title: session.receipt.title,
         date: session.receipt.date.toISOString(),
         currency: session.receipt.currency,
-        subtotalCents: Number(session.receipt.subtotalCents),
-        taxCents: Number(session.receipt.taxCents),
-        tipCents: Number(session.receipt.tipCents),
-        totalCents: Number(session.receipt.totalCents),
+        subtotalCents: this.toSafeInt(session.receipt.subtotalCents),
+        taxCents: this.toSafeInt(session.receipt.taxCents),
+        tipCents: this.toSafeInt(session.receipt.tipCents),
+        totalCents: this.toSafeInt(session.receipt.totalCents),
         items: session.receipt.items.map((item) => ({
           id: item.id,
           name: item.name,
           quantity: item.quantity,
-          priceCents: Number(item.priceCents),
+          priceCents: this.toSafeInt(item.priceCents),
           claimantIds: item.claims.map((claim) => claim.participantId),
         })),
         participants: session.receipt.participants.map((p) => ({

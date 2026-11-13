@@ -4,6 +4,7 @@ import {
   IsIn,
   IsInt,
   IsNotEmpty,
+  IsObject,
   IsOptional,
   IsString,
   IsUUID,
@@ -24,6 +25,7 @@ export const MODERATION_REASONS = [
 export type ModerationReason = (typeof MODERATION_REASONS)[number];
 
 export class CreateSharedSessionDto {
+  @IsObject()
   @ValidateNested()
   @Type(() => UpsertReceiptDto)
   @IsNotEmpty()
