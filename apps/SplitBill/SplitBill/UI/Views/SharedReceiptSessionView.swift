@@ -3,10 +3,7 @@ import SwiftUI
 struct SharedReceiptSessionView: View {
     @Environment(\.dismiss) private var dismiss
     @Bindable var collaborationViewModel: SharedSessionViewModel
-
-    private var currency: Currency {
-        collaborationViewModel.domainPreview?.grandTotal.currency ?? .mxn
-    }
+    @State private var showBlockConfirmation = false
 
     var body: some View {
         NavigationStack {
@@ -28,22 +25,35 @@ struct SharedReceiptSessionView: View {
                 }
 
                 if let snapshot = collaborationViewModel.activeSnapshot {
-                    headerSection(snapshot: snapshot)
-
-                    if let image = collaborationViewModel.decodedOptInImage {
-                        Section("Foto del Recibo (Opt-In)") {
-                            Image(uiImage: image)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(maxHeight: 240)
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                    if snapshot.domainStatus == .quarantined {
+                        Section {
+                            ContentUnavailableView(
+                                "Sesión suspendida por moderación",
+                                systemImage: "exclamationmark.shield.fill",
+                                description: Text("El contenido compartido fue ocultado tras recibir múltiples reportes.")
+                            )
+                            Button("Bloquear sesión y salir", role: .destructive) {
+                                showBlockConfirmation = true
+                            }
                         }
-                    }
+                    } else {
+                        headerSection(snapshot: snapshot)
 
-                    itemsSection(snapshot: snapshot)
+                        if let image = collaborationViewModel.decodedOptInImage {
+                            Section("Foto del Recibo (Opt-In)") {
+                                Image(uiImage: image)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(maxHeight: 240)
+                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                            }
+                        }
 
-                    if let preview = collaborationViewModel.domainPreview {
-                        totalsBreakdownSection(preview: preview)
+                        itemsSection(snapshot: snapshot)
+
+                        if let preview = collaborationViewModel.domainPreview {
+                            totalsBreakdownSection(preview: preview)
+                        }
                     }
                 } else {
                     ContentUnavailableView(
@@ -64,6 +74,49 @@ struct SharedReceiptSessionView: View {
                         dismiss()
                     }
                 }
+                if collaborationViewModel.activeSnapshot != nil {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Menu {
+                            if collaborationViewModel.shouldDisplayReceiptImage {
+                                Button {
+                                    collaborationViewModel.hideImageLocally()
+                                } label: {
+                                    Label("Ocultar imagen del recibo", systemImage: "eye.slash")
+                                }
+                            }
+                            Button {
+                                collaborationViewModel.isShowingReportSheet = true
+                            } label: {
+                                Label("Reportar contenido inapropiado", systemImage: "flag")
+                            }
+                            Button(role: .destructive) {
+                                showBlockConfirmation = true
+                            } label: {
+                                Label("Bloquear sesión y salir", systemImage: "hand.raised")
+                            }
+                        } label: {
+                            Label("Opciones de seguridad", systemImage: "ellipsis.circle")
+                        }
+                        .accessibilityLabel("Opciones de seguridad")
+                    }
+                }
+            }
+            .sheet(isPresented: $collaborationViewModel.isShowingReportSheet) {
+                ReportSessionSheet(collaborationViewModel: collaborationViewModel)
+            }
+            .confirmationDialog(
+                "¿Bloquear esta sesión compartida?",
+                isPresented: $showBlockConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Bloquear y salir", role: .destructive) {
+                    Task {
+                        await collaborationViewModel.blockAndLeaveSession()
+                    }
+                }
+                Button("Cancelar", role: .cancel) {}
+            } message: {
+                Text("Dejarás de ver esta cuenta compartida y no volverá a abrirse mediante enlaces.")
             }
         }
     }
